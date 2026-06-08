@@ -52,30 +52,6 @@ class UserSeeder extends Seeder
                 'role' => RoleEnum::CLEANING_SERVICE,
                 'password' => Hash::make('password'),
             ],
-            [
-                'name' => 'Budi Santoso',
-                'email' => 'budi@cleantrack.id',
-                'employee_id' => 'CS002',
-                'phone' => '081234567895',
-                'role' => RoleEnum::CLEANING_SERVICE,
-                'password' => Hash::make('password'),
-            ],
-            [
-                'name' => 'Citra Dewi',
-                'email' => 'citra@cleantrack.id',
-                'employee_id' => 'CS003',
-                'phone' => '081234567896',
-                'role' => RoleEnum::CLEANING_SERVICE,
-                'password' => Hash::make('password'),
-            ],
-            [
-                'name' => 'Dani Saputra',
-                'email' => 'dani@cleantrack.id',
-                'employee_id' => 'CS004',
-                'phone' => '081234567897',
-                'role' => RoleEnum::CLEANING_SERVICE,
-                'password' => Hash::make('password'),
-            ],
         ];
 
         foreach ($users as $user) {

@@ -15,15 +15,23 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'email' => 'required|email',
+            'email' => 'required|string',
             'password' => 'required|string',
         ]);
 
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        $login = $request->email;
+        $user = \App\Models\User::where('email', $login)
+            ->orWhere('username', $login)
+            ->orWhere('employee_id', $login)
+            ->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Kredensial yang diberikan tidak cocok.'],
             ]);
         }
+
+        Auth::login($user);
 
         $user = Auth::user();
 
