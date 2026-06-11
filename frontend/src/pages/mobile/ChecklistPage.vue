@@ -5,6 +5,7 @@ import api from '../../lib/axios'
 import { savePendingActivity, getCachedArea } from '../../lib/db'
 import { useOnline } from '../../composables/useOnline'
 import { v4 as uuidv4 } from 'uuid'
+import { useAuthStore } from '../../stores/auth'
 
 const props = defineProps<{ areaId: string }>()
 const router = useRouter()
@@ -13,6 +14,7 @@ const { isOnline } = useOnline()
 
 const uuid = route.query.uuid as string || uuidv4()
 const shiftId = parseInt(route.query.shift_id as string)
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const submitting = ref(false)
@@ -38,7 +40,7 @@ const startTime = ref(formatTime(new Date()))
 
 const notes = ref('')
 const photos = ref<Array<{ file: File; type: string; url: string }>>([])
-const maxPhotos = 4
+const maxPhotos = 100
 
 async function loadData() {
   loading.value = true
@@ -105,6 +107,29 @@ function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promise<File
 
         const ctx = canvas.getContext('2d')
         ctx?.drawImage(img, 0, 0, width, height)
+
+        // Draw watermark info (date, time, username)
+        if (ctx) {
+          const now = new Date()
+          const dateStr = now.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
+          const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          const userName = authStore.user?.name || 'Petugas'
+          const watermarkText = `CleanTrack | ${dateStr} ${timeStr} | ${userName}`
+
+          // Background rectangle for readability
+          const rectHeight = Math.max(30, Math.round(height * 0.05))
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
+          ctx.fillRect(0, height - rectHeight, width, rectHeight)
+
+          // Text styling
+          const fontSize = Math.max(12, Math.round(rectHeight * 0.45))
+          ctx.fillStyle = '#ffffff'
+          ctx.font = `600 ${fontSize}px sans-serif`
+          ctx.textBaseline = 'middle'
+          ctx.textAlign = 'left'
+          
+          ctx.fillText(watermarkText, 15, height - (rectHeight / 2))
+        }
 
         canvas.toBlob(
           (blob) => {
@@ -277,7 +302,7 @@ onMounted(() => {
 
     <!-- Evidence Photos -->
     <div class="card mt-4 animate-slide-up stagger-2">
-      <h3 class="font-semibold text-sm mb-3">Foto Bukti (Maks {{ maxPhotos }})</h3>
+      <h3 class="font-semibold text-sm mb-3">Foto Bukti (Sebelum / Sesudah)</h3>
       
       <div class="photo-grid">
         <div v-for="(photo, idx) in photos" :key="idx" class="photo-preview">

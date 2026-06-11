@@ -88,6 +88,20 @@ function getCompletionRate(act: any): number {
   return Math.round((checked / act.items.length) * 100)
 }
 
+function formatDate(dateStr: string): string {
+  if (!dateStr) return '-'
+  try {
+    const dateOnly = dateStr.split('T')[0].split(' ')[0]
+    const parts = dateOnly.split('-')
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`
+    }
+    return dateOnly
+  } catch {
+    return dateStr
+  }
+}
+
 function startAutoRefresh() {
   countdown.value = autoRefreshSeconds.value
   refreshTimer.value = setInterval(() => {
@@ -229,7 +243,7 @@ onUnmounted(() => {
           <tbody>
             <template v-for="act in filteredActivities" :key="act.id">
               <tr :class="{ 'row-expanded': expandedId === act.id, 'row-late': act.is_late }">
-                <td class="td-date">{{ act.date }}</td>
+                <td class="td-date">{{ formatDate(act.date) }}</td>
                 <td class="td-area">
                   <span class="area-name">{{ act.area?.name }}</span>
                   <span class="area-code">{{ act.area?.code }}</span>
@@ -331,10 +345,10 @@ onUnmounted(() => {
                       <div class="detail-section" v-if="act.photos && act.photos.length > 0">
                         <h5>📸 Bukti Foto ({{ act.photos.length }})</h5>
                         <div class="photo-grid">
-                          <div v-for="photo in act.photos" :key="photo.id" class="photo-thumb">
+                          <a v-for="photo in act.photos" :key="photo.id" :href="'/storage/' + photo.file_path" target="_blank" class="photo-thumb" title="Klik untuk memperbesar">
                             <img :src="'/storage/' + photo.file_path" :alt="photo.type" loading="lazy" />
                             <span class="photo-label">{{ photo.type === 'before' ? 'Sebelum' : 'Sesudah' }}</span>
-                          </div>
+                          </a>
                         </div>
                       </div>
                     </div>
@@ -819,6 +833,15 @@ onUnmounted(() => {
   overflow: hidden;
   border: 1px solid hsl(var(--border));
   position: relative;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  cursor: pointer;
+  display: block;
+}
+
+.photo-thumb:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border-color: hsl(var(--primary) / 0.5);
 }
 
 .photo-thumb img {
