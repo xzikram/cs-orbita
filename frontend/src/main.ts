@@ -5,6 +5,12 @@ import App from './App.vue'
 import { routes } from './router'
 import './assets/css/index.css'
 
+// Capture PWA install event globally
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault()
+  ;(window as any).deferredPrompt = e
+})
+
 const router = createRouter({
   history: createWebHistory(),
   routes,
