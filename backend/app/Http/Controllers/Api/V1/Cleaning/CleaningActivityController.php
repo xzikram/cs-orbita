@@ -141,6 +141,7 @@ class CleaningActivityController extends Controller
             'items.*.area_object_id' => 'required|exists:area_objects,id',
             'items.*.is_checked' => 'required|boolean',
             'device_id' => 'nullable|string',
+            'status' => 'sometimes|string|in:in_progress,completed',
         ]);
 
         return DB::transaction(function () use ($request, $validated) {
@@ -164,23 +165,49 @@ class CleaningActivityController extends Controller
                 }
             }
 
-            $activity = CleaningActivity::create([
-                'uuid' => $validated['uuid'] ?? Str::uuid()->toString(),
-                'area_id' => $validated['area_id'],
-                'user_id' => $request->user()->id,
-                'shift_id' => $validated['shift_id'],
-                'schedule_id' => $scheduleId,
-                'date' => $validated['date'],
-                'start_time' => $validated['start_time'],
-                'end_time' => $validated['end_time'] ?? now()->format('H:i'),
-                'notes' => $validated['notes'],
-                'status' => ActivityStatus::COMPLETED,
-                'sync_status' => SyncStatus::SYNCED,
-                'is_late' => $isLate,
-                'late_minutes' => $lateMinutes,
-                'submitted_at' => now(),
-                'device_id' => $validated['device_id'],
-            ]);
+            $status = $request->input('status', 'completed') === 'in_progress'
+                ? ActivityStatus::IN_PROGRESS
+                : ActivityStatus::COMPLETED;
+
+            // Check if there is an existing in_progress activity for this user, area, shift, date
+            $activity = CleaningActivity::where('user_id', $request->user()->id)
+                ->where('area_id', $validated['area_id'])
+                ->where('shift_id', $validated['shift_id'])
+                ->whereDate('date', $validated['date'])
+                ->where('status', ActivityStatus::IN_PROGRESS)
+                ->first();
+
+            if ($activity) {
+                $activity->update([
+                    'end_time' => $validated['end_time'] ?? now()->format('H:i'),
+                    'notes' => $validated['notes'],
+                    'status' => $status,
+                    'is_late' => $isLate,
+                    'late_minutes' => $lateMinutes,
+                    'submitted_at' => $status === ActivityStatus::COMPLETED ? now() : null,
+                    'device_id' => $validated['device_id'],
+                ]);
+                // Recreate checklist items
+                $activity->items()->delete();
+            } else {
+                $activity = CleaningActivity::create([
+                    'uuid' => $validated['uuid'] ?? Str::uuid()->toString(),
+                    'area_id' => $validated['area_id'],
+                    'user_id' => $request->user()->id,
+                    'shift_id' => $validated['shift_id'],
+                    'schedule_id' => $scheduleId,
+                    'date' => $validated['date'],
+                    'start_time' => $validated['start_time'],
+                    'end_time' => $validated['end_time'] ?? now()->format('H:i'),
+                    'notes' => $validated['notes'],
+                    'status' => $status,
+                    'sync_status' => SyncStatus::SYNCED,
+                    'is_late' => $isLate,
+                    'late_minutes' => $lateMinutes,
+                    'submitted_at' => $status === ActivityStatus::COMPLETED ? now() : null,
+                    'device_id' => $validated['device_id'],
+                ]);
+            }
 
             // Create checklist items
             foreach ($validated['items'] as $item) {

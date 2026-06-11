@@ -181,6 +181,36 @@ class MasterDataController extends Controller
     {
         $area->load(['areaObjects.cleaningObject', 'schedules.shift']);
 
+        // Find active shift based on current time (supports shifts crossing midnight)
+        $currentTime = now()->format('H:i:s');
+        $currentShift = \App\Models\Shift::active()
+            ->where(function ($query) use ($currentTime) {
+                $query->where(function ($q) use ($currentTime) {
+                    $q->whereRaw('start_time <= end_time')
+                        ->where('start_time', '<=', $currentTime)
+                        ->where('end_time', '>', $currentTime);
+                })->orWhere(function ($q) use ($currentTime) {
+                    $q->whereRaw('start_time > end_time')
+                        ->where(function ($sub) use ($currentTime) {
+                            $sub->where('start_time', '<=', $currentTime)
+                                ->orWhere('end_time', '>', $currentTime);
+                        });
+                });
+            })
+            ->first();
+
+        $user = auth()->user();
+        $inProgressActivity = null;
+        if ($currentShift && $user) {
+            $inProgressActivity = \App\Models\CleaningActivity::with('items')
+                ->where('user_id', $user->id)
+                ->where('area_id', $area->id)
+                ->where('shift_id', $currentShift->id)
+                ->whereDate('date', today())
+                ->where('status', \App\Enums\ActivityStatus::IN_PROGRESS)
+                ->first();
+        }
+
         return response()->json([
             'data' => [
                 'area' => [
@@ -189,17 +219,27 @@ class MasterDataController extends Controller
                     'name' => $area->name,
                     'category' => $area->category,
                 ],
-                'checklist' => $area->areaObjects->groupBy('room_name')->map(function ($items, $roomName) {
+                'checklist' => $area->areaObjects->groupBy('room_name')->map(function ($items, $roomName) use ($inProgressActivity) {
                     return [
                         'room_name' => $roomName ?: 'Umum',
-                        'items' => $items->map(fn($ao) => [
-                            'id' => $ao->id,
-                            'object_id' => $ao->cleaning_object_id,
-                            'name' => $ao->cleaningObject->name,
-                            'icon' => $ao->cleaningObject->icon,
-                            'is_required' => $ao->is_required,
-                            'sort_order' => $ao->sort_order,
-                        ])->values(),
+                        'items' => $items->map(function ($ao) use ($inProgressActivity) {
+                            $isChecked = false;
+                            if ($inProgressActivity) {
+                                $isChecked = $inProgressActivity->items
+                                    ->where('area_object_id', $ao->id)
+                                    ->where('is_checked', true)
+                                    ->isNotEmpty();
+                            }
+                            return [
+                                'id' => $ao->id,
+                                'object_id' => $ao->cleaning_object_id,
+                                'name' => $ao->cleaningObject->name,
+                                'icon' => $ao->cleaningObject->icon,
+                                'is_required' => $ao->is_required,
+                                'sort_order' => $ao->sort_order,
+                                'is_checked' => $isChecked,
+                            ];
+                        })->values(),
                     ];
                 })->values(),
                 'schedules' => $area->schedules->map(fn($s) => [
@@ -209,6 +249,11 @@ class MasterDataController extends Controller
                     'time' => $s->scheduled_time,
                     'tolerance' => $s->tolerance_minutes,
                 ]),
+                'draft' => $inProgressActivity ? [
+                    'id' => $inProgressActivity->id,
+                    'notes' => $inProgressActivity->notes,
+                    'start_time' => \Carbon\Carbon::parse($inProgressActivity->start_time)->format('H:i'),
+                ] : null,
             ],
         ]);
     }

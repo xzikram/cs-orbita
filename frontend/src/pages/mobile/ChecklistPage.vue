@@ -16,6 +16,7 @@ const shiftId = parseInt(route.query.shift_id as string)
 
 const loading = ref(true)
 const submitting = ref(false)
+const submittingDraft = ref(false)
 const area = ref<any>(null)
 const checklist = ref<any[]>([])
 const currentShift = ref<any>(null)
@@ -35,10 +36,14 @@ async function loadData() {
         room_name: group.room_name,
         items: group.items.map((item: any) => ({
           ...item,
-          is_checked: false
+          is_checked: item.is_checked || false
         }))
       }))
       currentShift.value = data.data.schedules.find((s: any) => s.shift_id === shiftId)
+      if (data.data.draft) {
+        notes.value = data.data.draft.notes || ''
+        startTime.value = data.data.draft.start_time
+      }
     } else {
       // Offline fallback
       const cached = await getCachedArea(parseInt(props.areaId))
@@ -141,13 +146,14 @@ const allRequiredChecked = computed(() => {
   )
 })
 
-async function submitActivity() {
-  if (!allRequiredChecked.value) {
+async function submitActivity(isDraft = false) {
+  if (!isDraft && !allRequiredChecked.value) {
     alert('Pastikan semua objek wajib telah dibersihkan.')
     return
   }
 
   submitting.value = true
+  submittingDraft.value = isDraft
   const endTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
   const date = new Date().toISOString().split('T')[0]
 
@@ -159,6 +165,7 @@ async function submitActivity() {
     start_time: startTime.value,
     end_time: endTime,
     notes: notes.value,
+    status: isDraft ? 'in_progress' : 'completed',
     items: checklist.value.flatMap(group => 
       group.items.map((item: any) => ({
         area_object_id: item.id, // using the Pivot ID
@@ -203,9 +210,10 @@ async function submitActivity() {
     router.push({ name: 'mobile-dashboard' })
   } catch (e) {
     console.error(e)
-    alert('Gagal menyimpan aktivitas')
+    alert(isDraft ? 'Gagal menyimpan draft' : 'Gagal menyimpan aktivitas')
   } finally {
     submitting.value = false
+    submittingDraft.value = false
   }
 }
 
@@ -287,18 +295,29 @@ onMounted(() => {
       ></textarea>
     </div>
 
-    <!-- Submit Button -->
-    <button 
-      class="btn-scan mb-4 animate-slide-up stagger-4" 
-      :class="{ 'opacity-50': !allRequiredChecked || submitting }"
-      :disabled="!allRequiredChecked || submitting"
-      @click="submitActivity"
-    >
-      <span v-if="submitting" class="spinner-small"></span>
-      <span v-else>Selesai & Simpan</span>
-    </button>
+    <!-- Submit Button Container -->
+    <div class="submit-buttons-container mb-4 animate-slide-up stagger-4">
+      <button 
+        class="btn-scan btn-scan-draft" 
+        :class="{ 'opacity-50': submitting }"
+        :disabled="submitting"
+        @click="submitActivity(true)"
+      >
+        <span v-if="submitting && submittingDraft" class="spinner-small"></span>
+        <span v-else>💾 Simpan Draft</span>
+      </button>
+      <button 
+        class="btn-scan btn-scan-final" 
+        :class="{ 'opacity-50': !allRequiredChecked || submitting }"
+        :disabled="!allRequiredChecked || submitting"
+        @click="submitActivity(false)"
+      >
+        <span v-if="submitting && !submittingDraft" class="spinner-small"></span>
+        <span v-else>✅ Selesai & Simpan</span>
+      </button>
+    </div>
     <p v-if="!allRequiredChecked" class="text-center text-xs text-warning mb-6">
-      Selesaikan semua objek wajib untuk menyimpan.
+      Selesaikan semua objek wajib untuk menyimpan hasil akhir.
     </p>
 
   </div>
@@ -521,5 +540,28 @@ input:checked ~ .checkbox-box::after {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.submit-buttons-container {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.btn-scan-draft {
+  flex: 1;
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: none !important;
+}
+
+.btn-scan-draft:hover {
+  background: hsl(var(--muted) / 0.8) !important;
+  box-shadow: none !important;
+}
+
+.btn-scan-final {
+  flex: 1.2;
 }
 </style>
