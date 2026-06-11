@@ -35,6 +35,12 @@ async function onScanSuccess(decodedText: string) {
       await html5QrCode.stop()
     }
 
+    if (!data.data.current_shift) {
+      error.value = 'Tidak ada shift aktif yang cocok dengan waktu saat ini.'
+      loading.value = false
+      return
+    }
+
     if (data.data.already_cleaned) {
       error.value = 'Area ini sudah dibersihkan pada shift ini.'
       loading.value = false

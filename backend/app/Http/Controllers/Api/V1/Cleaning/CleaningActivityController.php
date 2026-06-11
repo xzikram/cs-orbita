@@ -79,11 +79,22 @@ class CleaningActivityController extends Controller
         $area = $qrCode->area;
         $area->load(['areaObjects.cleaningObject', 'schedules.shift', 'floor.building']);
 
-        // Get current shift
+        // Get current shift (supports shifts crossing midnight)
         $currentTime = now()->format('H:i:s');
         $currentShift = \App\Models\Shift::active()
-            ->where('start_time', '<=', $currentTime)
-            ->where('end_time', '>', $currentTime)
+            ->where(function ($query) use ($currentTime) {
+                $query->where(function ($q) use ($currentTime) {
+                    $q->whereRaw('start_time <= end_time')
+                        ->where('start_time', '<=', $currentTime)
+                        ->where('end_time', '>', $currentTime);
+                })->orWhere(function ($q) use ($currentTime) {
+                    $q->whereRaw('start_time > end_time')
+                        ->where(function ($sub) use ($currentTime) {
+                            $sub->where('start_time', '<=', $currentTime)
+                                ->orWhere('end_time', '>', $currentTime);
+                        });
+                });
+            })
             ->first();
 
         // Check if already cleaned today for this shift
