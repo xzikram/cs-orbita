@@ -89,31 +89,66 @@ class DashboardController extends Controller
         $today = today();
         $shifts = Shift::active()->ordered()->get();
 
+        // Pre-load all today's activities to avoid N+1
+        $todayActivities = CleaningActivity::whereDate('date', $today)
+            ->get()
+            ->groupBy(function ($activity) {
+                return $activity->area_id . '-' . $activity->shift_id;
+            });
+
+        // Pre-load all schedules
+        $allSchedules = \App\Models\AreaSchedule::all()
+            ->groupBy(function ($schedule) {
+                return $schedule->area_id . '-' . $schedule->shift_id;
+            });
+
+        $currentTime = now()->format('H:i');
+
+        // Summary counters
+        $summaryClean = 0;
+        $summaryPending = 0;
+        $summaryLate = 0;
+        $summaryNone = 0;
+
         $areas = Area::with(['floor.building'])
             ->active()
             ->get()
-            ->map(function ($area) use ($today, $shifts) {
+            ->map(function ($area) use ($today, $shifts, $todayActivities, $allSchedules, $currentTime, &$summaryClean, &$summaryPending, &$summaryLate, &$summaryNone) {
                 $statuses = [];
 
                 foreach ($shifts as $shift) {
-                    $activity = CleaningActivity::where('area_id', $area->id)
-                        ->where('shift_id', $shift->id)
-                        ->whereDate('date', $today)
-                        ->first();
+                    $key = $area->id . '-' . $shift->id;
+                    $activity = $todayActivities->get($key)?->first();
 
                     if ($activity) {
                         if ($activity->status === ActivityStatus::COMPLETED) {
-                            $statuses[$shift->id] = $activity->sync_status->value === 'synced' ? 'clean' : 'pending';
+                            $statuses[$shift->id] = 'clean';
+                            $summaryClean++;
+                        } elseif ($activity->status === ActivityStatus::IN_PROGRESS) {
+                            $statuses[$shift->id] = 'pending';
+                            $summaryPending++;
                         } else {
                             $statuses[$shift->id] = 'pending';
+                            $summaryPending++;
                         }
                     } else {
                         // Check if schedule exists and is overdue
-                        $schedule = $area->schedules()->where('shift_id', $shift->id)->first();
-                        if ($schedule && now()->format('H:i') > $schedule->scheduled_time->format('H:i')) {
-                            $statuses[$shift->id] = 'late';
+                        $schedule = $allSchedules->get($key)?->first();
+                        if ($schedule && $schedule->scheduled_time) {
+                            $scheduledTimeStr = $schedule->scheduled_time instanceof \DateTimeInterface
+                                ? $schedule->scheduled_time->format('H:i')
+                                : (string) $schedule->scheduled_time;
+
+                            if ($currentTime > $scheduledTimeStr) {
+                                $statuses[$shift->id] = 'late';
+                                $summaryLate++;
+                            } else {
+                                $statuses[$shift->id] = 'none';
+                                $summaryNone++;
+                            }
                         } else {
                             $statuses[$shift->id] = 'none';
+                            $summaryNone++;
                         }
                     }
                 }
@@ -122,9 +157,9 @@ class DashboardController extends Controller
                     'id' => $area->id,
                     'code' => $area->code,
                     'name' => $area->name,
-                    'category' => $area->category->value,
-                    'floor' => $area->floor->name,
-                    'building' => $area->floor->building->name,
+                    'category' => $area->category?->value ?? '-',
+                    'floor' => $area->floor?->name ?? '-',
+                    'building' => $area->floor?->building?->name ?? '-',
                     'statuses' => $statuses,
                 ];
             });
@@ -133,60 +168,96 @@ class DashboardController extends Controller
             'data' => [
                 'shifts' => $shifts,
                 'areas' => $areas,
+                'summary' => [
+                    'total_cells' => $summaryClean + $summaryPending + $summaryLate + $summaryNone,
+                    'clean' => $summaryClean,
+                    'pending' => $summaryPending,
+                    'late' => $summaryLate,
+                    'none' => $summaryNone,
+                    'total_areas' => $areas->count(),
+                ],
             ],
         ]);
     }
 
-    // Audit grid (Excel-like view for supervisor)
+    // Audit grid (Excel-like view for supervisor) — Optimized
     public function auditGrid(Request $request): JsonResponse
     {
         $date = $request->get('date', today()->toDateString());
         $shifts = Shift::active()->ordered()->get();
 
+        // Pre-load ALL completed activities for this date with their items
+        $allActivities = CleaningActivity::with(['items'])
+            ->whereDate('date', $date)
+            ->where('status', ActivityStatus::COMPLETED)
+            ->get()
+            ->groupBy(function ($activity) {
+                return $activity->area_id . '-' . $activity->shift_id;
+            });
+
         $areas = Area::with(['areaObjects.cleaningObject'])
             ->active()
             ->get()
-            ->map(function ($area) use ($date, $shifts) {
-                $objects = $area->areaObjects->map(function ($ao) use ($area, $date, $shifts) {
+            ->map(function ($area) use ($date, $shifts, $allActivities) {
+                $totalObjects = $area->areaObjects->count();
+                $totalChecked = 0;
+                $totalCells = 0;
+
+                $objects = $area->areaObjects->map(function ($ao) use ($area, $date, $shifts, $allActivities, &$totalChecked, &$totalCells) {
                     $shiftStatuses = [];
 
                     foreach ($shifts as $shift) {
-                        $activity = CleaningActivity::where('area_id', $area->id)
-                            ->where('shift_id', $shift->id)
-                            ->whereDate('date', $date)
-                            ->where('status', ActivityStatus::COMPLETED)
-                            ->first();
+                        $key = $area->id . '-' . $shift->id;
+                        $activity = $allActivities->get($key)?->first();
 
                         if ($activity) {
-                            $item = $activity->items()
-                                ->where('area_object_id', $ao->id)
-                                ->first();
-
-                            $shiftStatuses[$shift->id] = $item ? $item->is_checked : false;
+                            $item = $activity->items->where('area_object_id', $ao->id)->first();
+                            $isChecked = $item ? $item->is_checked : false;
+                            $shiftStatuses[$shift->id] = $isChecked;
+                            $totalCells++;
+                            if ($isChecked) $totalChecked++;
                         } else {
                             $shiftStatuses[$shift->id] = null; // no activity
                         }
                     }
 
                     return [
-                        'object_name' => $ao->cleaningObject->name,
+                        'object_name' => $ao->cleaningObject->name ?? '-',
                         'shifts' => $shiftStatuses,
                     ];
                 });
+
+                $completionRate = $totalCells > 0 ? round(($totalChecked / $totalCells) * 100, 1) : 0;
 
                 return [
                     'area_id' => $area->id,
                     'area_name' => $area->name,
                     'area_code' => $area->code,
+                    'total_objects' => $totalObjects,
+                    'total_checked' => $totalChecked,
+                    'total_cells' => $totalCells,
+                    'completion_rate' => $completionRate,
                     'objects' => $objects,
                 ];
             });
+
+        // Global stats
+        $globalTotalCells = $areas->sum('total_cells');
+        $globalChecked = $areas->sum('total_checked');
+        $globalRate = $globalTotalCells > 0 ? round(($globalChecked / $globalTotalCells) * 100, 1) : 0;
 
         return response()->json([
             'data' => [
                 'date' => $date,
                 'shifts' => $shifts,
                 'areas' => $areas,
+                'summary' => [
+                    'total_areas' => $areas->count(),
+                    'total_objects' => $areas->sum('total_objects'),
+                    'total_checked' => $globalChecked,
+                    'total_cells' => $globalTotalCells,
+                    'completion_rate' => $globalRate,
+                ],
             ],
         ]);
     }
