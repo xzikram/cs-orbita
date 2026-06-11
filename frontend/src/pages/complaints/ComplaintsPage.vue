@@ -24,6 +24,16 @@ const loadingDetail = ref(false)
 const updateNotes = ref('')
 const assigneeId = ref<number | null>(null)
 
+// Photo preview modal state
+const previewModal = ref({ show: false, url: '', title: '' })
+function openPreview(url: string, title: string) {
+  previewModal.value = { show: true, url, title }
+}
+function closePreview() {
+  previewModal.value.show = false
+}
+
+
 // New Complaint Form & Photos
 const showForm = ref(false)
 const areas = ref<any[]>([])
@@ -476,9 +486,9 @@ onMounted(() => {
                         <div class="mb-4" v-if="expandedData.photos && expandedData.photos.length > 0">
                           <h4 class="details-heading">Lampiran Bukti ({{ expandedData.photos.length }} Foto)</h4>
                           <div class="image-gallery">
-                            <a v-for="photo in expandedData.photos" :key="photo.id" :href="`${apiBaseUrl}/storage/${photo.file_path}`" target="_blank" class="gallery-thumbnail">
+                            <div v-for="photo in expandedData.photos" :key="photo.id" class="gallery-thumbnail cursor-pointer" title="Klik untuk memperbesar" @click="openPreview(`${apiBaseUrl}/storage/${photo.file_path}`, 'Lampiran Bukti')">
                               <img :src="`${apiBaseUrl}/storage/${photo.file_path}`" alt="Lampiran Bukti" />
-                            </a>
+                            </div>
                           </div>
                         </div>
 
@@ -588,6 +598,15 @@ onMounted(() => {
             Selanjutnya
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div v-if="previewModal.show" class="preview-modal-overlay" @click="closePreview">
+      <div class="preview-modal-content" @click.stop>
+        <button class="preview-close-btn" @click="closePreview">✕</button>
+        <img :src="previewModal.url" :alt="previewModal.title" class="preview-modal-img" />
+        <div class="preview-modal-caption">{{ previewModal.title }}</div>
       </div>
     </div>
   </div>
@@ -934,5 +953,84 @@ onMounted(() => {
   .filters-group {
     flex-direction: column;
   }
+}
+
+/* Preview Modal Lightbox */
+.preview-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.preview-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 85vh;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  animation: zoomIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.preview-modal-img {
+  max-width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+  display: block;
+}
+
+.preview-modal-caption {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
+  border-top: 1px solid hsl(var(--border) / 0.5);
+}
+
+.preview-close-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.2s;
+  z-index: 10;
+}
+
+.preview-close-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 </style>

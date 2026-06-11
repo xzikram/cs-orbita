@@ -128,6 +128,14 @@ onMounted(() => {
 onUnmounted(() => {
   stopAutoRefresh()
 })
+
+const previewModal = ref({ show: false, url: '', title: '' })
+function openPreview(url: string, title: string) {
+  previewModal.value = { show: true, url, title }
+}
+function closePreview() {
+  previewModal.value.show = false
+}
 </script>
 
 <template>
@@ -345,10 +353,10 @@ onUnmounted(() => {
                       <div class="detail-section" v-if="act.photos && act.photos.length > 0">
                         <h5>📸 Bukti Foto ({{ act.photos.length }})</h5>
                         <div class="photo-grid">
-                          <a v-for="photo in act.photos" :key="photo.id" :href="'/storage/' + photo.file_path" target="_blank" class="photo-thumb" title="Klik untuk memperbesar">
+                          <div v-for="photo in act.photos" :key="photo.id" class="photo-thumb" title="Klik untuk memperbesar" @click="openPreview('/storage/' + photo.file_path, photo.type === 'before' ? 'Sebelum' : 'Sesudah')">
                             <img :src="'/storage/' + photo.file_path" :alt="photo.type" loading="lazy" />
                             <span class="photo-label">{{ photo.type === 'before' ? 'Sebelum' : 'Sesudah' }}</span>
-                          </a>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -365,6 +373,15 @@ onUnmounted(() => {
         <button class="btn btn-ghost btn-sm" @click="prevPage" :disabled="currentPage <= 1">← Sebelumnya</button>
         <span class="page-info">Halaman {{ currentPage }} dari {{ totalPages }}</span>
         <button class="btn btn-ghost btn-sm" @click="nextPage" :disabled="currentPage >= totalPages">Selanjutnya →</button>
+      </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div v-if="previewModal.show" class="preview-modal-overlay" @click="closePreview">
+      <div class="preview-modal-content" @click.stop>
+        <button class="preview-close-btn" @click="closePreview">✕</button>
+        <img :src="previewModal.url" :alt="previewModal.title" class="preview-modal-img" />
+        <div class="preview-modal-caption">{{ previewModal.title }}</div>
       </div>
     </div>
   </div>
@@ -932,4 +949,83 @@ onUnmounted(() => {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Preview Modal Lightbox */
+.preview-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.preview-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 85vh;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  animation: zoomIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.preview-modal-img {
+  max-width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+  display: block;
+}
+
+.preview-modal-caption {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--foreground));
+  border-top: 1px solid hsl(var(--border) / 0.5);
+}
+
+.preview-close-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.2s;
+  z-index: 10;
+}
+
+.preview-close-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
 </style>
