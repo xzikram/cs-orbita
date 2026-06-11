@@ -21,7 +21,7 @@ class DashboardController extends Controller
     public function mobile(Request $request): JsonResponse
     {
         $user = $request->user();
-        $today = today();
+        $todayStr = now()->toDateString();
 
         $assignedAreaIds = $user->areas()->pluck('areas.id');
 
@@ -32,40 +32,23 @@ class DashboardController extends Controller
 
         $todayTotal = $schedules->count();
 
-        if ($todayTotal > 0) {
-            // Count how many of these schedules have been completed today by this user
-            $completedCount = 0;
-            foreach ($schedules as $schedule) {
-                $hasCompleted = CleaningActivity::where('user_id', $user->id)
-                    ->where('area_id', $schedule->area_id)
-                    ->where('shift_id', $schedule->shift_id)
-                    ->whereDate('date', $today)
-                    ->where('status', ActivityStatus::COMPLETED)
-                    ->exists();
-                if ($hasCompleted) {
-                    $completedCount++;
-                }
-            }
-            $todayCompleted = $completedCount;
-        } else {
-            // Fallback: if no schedules exist, count completed unique areas by this user
+        // Count how many activities are completed today by this user
+        $todayCompleted = CleaningActivity::where('user_id', $user->id)
+            ->where('date', $todayStr)
+            ->where('status', ActivityStatus::COMPLETED)
+            ->count();
+
+        if ($todayTotal === 0) {
+            // Fallback: if no schedules exist, use assigned areas count
             $todayTotal = $assignedAreaIds->count();
-            if ($todayTotal > 0) {
-                $todayCompleted = CleaningActivity::where('user_id', $user->id)
-                    ->whereIn('area_id', $assignedAreaIds)
-                    ->whereDate('date', $today)
-                    ->where('status', ActivityStatus::COMPLETED)
-                    ->pluck('area_id')
-                    ->unique()
-                    ->count();
-            } else {
-                $todayCompleted = 0;
-            }
         }
+
+        // Ensure total tasks is at least the number of completed tasks today
+        $todayTotal = max($todayTotal, $todayCompleted);
 
         // Count how many activities are still in progress today (started but not completed)
         $todayPending = CleaningActivity::where('user_id', $user->id)
-            ->whereDate('date', $today)
+            ->where('date', $todayStr)
             ->where('status', ActivityStatus::IN_PROGRESS)
             ->count();
 
