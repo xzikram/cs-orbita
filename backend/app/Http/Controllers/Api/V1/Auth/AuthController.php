@@ -20,10 +20,15 @@ class AuthController extends Controller
         ]);
 
         $login = $request->email;
-        $user = \App\Models\User::where('email', $login)
-            ->orWhere('username', $login)
-            ->orWhere('employee_id', $login)
-            ->first();
+        
+        // Prioritize username exact match, then email, then employee_id
+        $user = \App\Models\User::where('username', $login)->first();
+        if (!$user) {
+            $user = \App\Models\User::where('email', $login)->first();
+        }
+        if (!$user) {
+            $user = \App\Models\User::where('employee_id', $login)->first();
+        }
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
