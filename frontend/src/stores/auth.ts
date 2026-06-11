@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import api from '../lib/axios'
-import { cacheUserProfile, getCachedUserProfile } from '../lib/db'
+import { cacheUserProfile, getCachedUserProfile, clearOfflineCache } from '../lib/db'
 
 export interface User {
   id: number
@@ -73,6 +73,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await api.post('/api/v1/auth/logout')
     } finally {
+      await clearOfflineCache()
       user.value = null
     }
   }

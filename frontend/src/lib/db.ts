@@ -123,3 +123,9 @@ export async function getCachedUserProfile(): Promise<any> {
   const all = await db.getAll('userProfile')
   return all[0] || null
 }
+
+export async function clearOfflineCache(): Promise<void> {
+  const db = await getDB()
+  await db.clear('userProfile')
+  await db.clear('cachedAreas')
+}
