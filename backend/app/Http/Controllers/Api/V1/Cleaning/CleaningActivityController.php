@@ -180,12 +180,12 @@ class CleaningActivityController extends Controller
             if ($activity) {
                 $activity->update([
                     'end_time' => $validated['end_time'] ?? now()->format('H:i'),
-                    'notes' => $validated['notes'],
+                    'notes' => $validated['notes'] ?? null,
                     'status' => $status,
                     'is_late' => $isLate,
                     'late_minutes' => $lateMinutes,
                     'submitted_at' => $status === ActivityStatus::COMPLETED ? now() : null,
-                    'device_id' => $validated['device_id'],
+                    'device_id' => $validated['device_id'] ?? null,
                 ]);
                 // Recreate checklist items
                 $activity->items()->delete();
@@ -199,13 +199,13 @@ class CleaningActivityController extends Controller
                     'date' => $validated['date'],
                     'start_time' => $validated['start_time'],
                     'end_time' => $validated['end_time'] ?? now()->format('H:i'),
-                    'notes' => $validated['notes'],
+                    'notes' => $validated['notes'] ?? null,
                     'status' => $status,
                     'sync_status' => SyncStatus::SYNCED,
                     'is_late' => $isLate,
                     'late_minutes' => $lateMinutes,
                     'submitted_at' => $status === ActivityStatus::COMPLETED ? now() : null,
-                    'device_id' => $validated['device_id'],
+                    'device_id' => $validated['device_id'] ?? null,
                 ]);
             }
 

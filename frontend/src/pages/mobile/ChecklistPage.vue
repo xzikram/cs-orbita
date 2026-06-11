@@ -20,7 +20,21 @@ const submittingDraft = ref(false)
 const area = ref<any>(null)
 const checklist = ref<any[]>([])
 const currentShift = ref<any>(null)
-const startTime = ref(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }))
+
+function formatTime(date: Date): string {
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+function getLocalDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const startTime = ref(formatTime(new Date()))
 
 const notes = ref('')
 const photos = ref<Array<{ file: File; type: string; url: string }>>([])
@@ -154,8 +168,8 @@ async function submitActivity(isDraft = false) {
 
   submitting.value = true
   submittingDraft.value = isDraft
-  const endTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-  const date = new Date().toISOString().split('T')[0]
+  const endTime = formatTime(new Date())
+  const date = getLocalDateString(new Date())
 
   const activityData = {
     uuid,
