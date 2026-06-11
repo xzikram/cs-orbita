@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '../../lib/axios'
-import { useAuthStore } from '../../stores/auth'
 
-const authStore = useAuthStore()
 const areas = ref<any[]>([])
 const loading = ref(true)
 const expandedArea = ref<number | null>(null)

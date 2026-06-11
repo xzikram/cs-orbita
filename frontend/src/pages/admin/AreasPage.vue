@@ -1,11 +1,55 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '../../lib/axios'
 
 const areas = ref<any[]>([])
 const loading = ref(true)
 const generating = ref(false)
 const expandedArea = ref<number | null>(null)
+const searchQuery = ref('')
+const filterBuilding = ref('')
+const filterCategory = ref('')
+
+const buildings = computed(() => {
+  const set = new Set(areas.value.map((a: any) => a.floor?.building?.name).filter(Boolean))
+  return Array.from(set).sort()
+})
+
+const categories = computed(() => {
+  const set = new Set(areas.value.map((a: any) => a.category).filter(Boolean))
+  return Array.from(set).sort()
+})
+
+const filteredAreas = computed(() => {
+  let list = areas.value
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter((a: any) =>
+      a.name.toLowerCase().includes(q) ||
+      a.code.toLowerCase().includes(q) ||
+      (a.floor?.name || '').toLowerCase().includes(q)
+    )
+  }
+  if (filterBuilding.value) {
+    list = list.filter((a: any) => a.floor?.building?.name === filterBuilding.value)
+  }
+  if (filterCategory.value) {
+    list = list.filter((a: any) => a.category === filterCategory.value)
+  }
+  return list
+})
+
+const stats = computed(() => {
+  const all = areas.value
+  const totalObjects = all.reduce((sum: number, a: any) => sum + (a.area_objects?.length || 0), 0)
+  const withQr = all.filter((a: any) => a.qr_code).length
+  return {
+    total: all.length,
+    totalObjects,
+    withQr,
+    withoutQr: all.length - withQr,
+  }
+})
 
 function toggleArea(id: number) {
   expandedArea.value = expandedArea.value === id ? null : id
@@ -23,11 +67,10 @@ function groupByRoom(objects: any[]) {
 
 async function generateAllQr() {
   if (!confirm('Generate QR Code untuk semua area yang belum memiliki?')) return
-  
   generating.value = true
   try {
     await api.post('/api/v1/qr-codes/generate-all')
-    await fetchAreas() // Reload areas to get new QR data
+    await fetchAreas()
   } catch (e) {
     console.error(e)
     alert('Gagal menggenerate QR Codes')
@@ -41,84 +84,33 @@ async function printQr(area: any) {
     alert('QR Code belum dibuat untuk area ini.')
     return
   }
-  
+
   const printWin = window.open('', '_blank')
   if (!printWin) return
-  
+
   printWin.document.write(`
     <html>
       <head>
         <title>Print QR - ${area.name}</title>
         <style>
-          @page {
-            size: A5 portrait;
-            margin: 0;
-          }
+          @page { size: A5 portrait; margin: 0; }
           body {
-            font-family: sans-serif;
-            text-align: center;
-            padding: 0;
-            margin: 0;
-            background: #fff;
-            color: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            box-sizing: border-box;
+            font-family: sans-serif; text-align: center; padding: 0; margin: 0;
+            background: #fff; color: #000; display: flex; align-items: center;
+            justify-content: center; min-height: 100vh; box-sizing: border-box;
           }
           .card {
-            border: 2px solid #000;
-            padding: 2.5rem 2rem;
-            width: 118mm;
-            height: 180mm;
-            border-radius: 1rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            box-sizing: border-box;
+            border: 2px solid #000; padding: 2.5rem 2rem; width: 118mm; height: 180mm;
+            border-radius: 1rem; display: flex; flex-direction: column;
+            align-items: center; justify-content: space-between; box-sizing: border-box;
           }
-          .print-logo {
-            height: 38px;
-            width: auto;
-            object-fit: contain;
-            margin-bottom: 0.5rem;
-          }
-          .header-info {
-            text-align: center;
-            width: 100%;
-          }
-          .title {
-            font-size: 22px;
-            font-weight: bold;
-            margin-top: 0.5rem;
-            margin-bottom: 0.25rem;
-          }
-          .code {
-            font-size: 14px;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-          }
-          #qr-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: auto 0;
-          }
-          #qr-container img {
-            width: 75mm;
-            height: 75mm;
-            object-fit: contain;
-          }
-          .footer {
-            margin-top: 1rem;
-            font-size: 11px;
-            font-weight: bold;
-            color: #888;
-            letter-spacing: 0.05em;
-          }
+          .print-logo { height: 38px; width: auto; object-fit: contain; margin-bottom: 0.5rem; }
+          .header-info { text-align: center; width: 100%; }
+          .title { font-size: 22px; font-weight: bold; margin-top: 0.5rem; margin-bottom: 0.25rem; }
+          .code { font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+          #qr-container { display: flex; justify-content: center; align-items: center; margin: auto 0; }
+          #qr-container img { width: 75mm; height: 75mm; object-fit: contain; }
+          .footer { margin-top: 1rem; font-size: 11px; font-weight: bold; color: #888; letter-spacing: 0.05em; }
         </style>
         <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"><\/script>
       </head>
@@ -164,186 +156,351 @@ onMounted(() => {
 
 <template>
   <div class="areas-page animate-fade-in">
-    <div class="flex justify-between items-center mb-6">
+    <!-- Header -->
+    <div class="page-header">
       <div>
-        <h1 class="text-2xl font-bold">Kelola Area</h1>
-        <p class="text-muted-foreground">Daftar area pembersihan yang terdaftar di sistem.</p>
+        <h1 class="page-title"><span class="title-icon">🏢</span> Kelola Area</h1>
+        <p class="page-subtitle">Daftar area pembersihan yang terdaftar di sistem</p>
       </div>
-      <div class="flex gap-3">
-        <button class="btn btn-secondary" @click="fetchAreas">
-          🔄 Refresh
-        </button>
+      <div class="header-actions">
+        <button class="btn btn-secondary" @click="fetchAreas">🔄 Refresh</button>
         <button class="btn btn-primary" @click="generateAllQr" :disabled="generating">
-          {{ generating ? 'Generating...' : 'Generate Missing QR' }}
+          {{ generating ? '⏳ Generating...' : '📱 Generate Missing QR' }}
         </button>
       </div>
     </div>
 
-    <div v-if="loading" class="flex justify-center p-12">
-      <div class="spinner-large"></div>
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card animate-slide-up stagger-1">
+        <div class="stat-icon stat-icon-total">🏥</div>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.total }}</span>
+          <span class="stat-label">Total Area</span>
+        </div>
+      </div>
+      <div class="stat-card animate-slide-up stagger-2">
+        <div class="stat-icon stat-icon-objects">📦</div>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.totalObjects }}</span>
+          <span class="stat-label">Total Objek</span>
+        </div>
+      </div>
+      <div class="stat-card animate-slide-up stagger-3">
+        <div class="stat-icon stat-icon-qr">✅</div>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.withQr }}</span>
+          <span class="stat-label">QR Aktif</span>
+        </div>
+      </div>
+      <div class="stat-card animate-slide-up stagger-4">
+        <div class="stat-icon stat-icon-noqr">⚠️</div>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.withoutQr }}</span>
+          <span class="stat-label">Tanpa QR</span>
+        </div>
+      </div>
     </div>
-    
-    <div v-else class="card p-0 overflow-hidden">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Kode</th>
-            <th>Nama Area</th>
-            <th>Kategori</th>
-            <th>Lantai</th>
-            <th>Gedung</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <template v-for="area in areas" :key="area.id">
-            <tr class="cursor-pointer" @click="toggleArea(area.id)">
-              <td class="font-bold text-primary">{{ area.code }}</td>
-              <td>{{ area.name }}</td>
-              <td>
-                <span class="badge" style="background: hsl(var(--primary)/0.1); color: hsl(var(--primary));">
-                  {{ area.category }}
-                </span>
-              </td>
-              <td>{{ area.floor?.name || '-' }}</td>
-              <td>
-                <span>{{ area.floor?.building?.name || '-' }}</span>
-              </td>
-              <td @click="toggleArea(area.id)">
-                <div class="flex gap-2 items-center">
-                  <span class="text-xs mr-2">{{ expandedArea === area.id ? '▲ Detail' : '▼ Detail' }}</span>
-                  <button v-if="area.qr_code" class="btn btn-ghost text-xs" @click.stop="printQr(area)">
-                    🖨️ Cetak QR
-                  </button>
-                  <span v-else class="text-xs text-warning">Belum ada QR</span>
-                </div>
-              </td>
+
+    <!-- Filters -->
+    <div class="filters-bar animate-slide-up">
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" v-model="searchQuery" class="input search-input" placeholder="Cari area, kode, atau lantai..." />
+      </div>
+      <select v-model="filterBuilding" class="input filter-select">
+        <option value="">Semua Gedung</option>
+        <option v-for="b in buildings" :key="b" :value="b">{{ b }}</option>
+      </select>
+      <select v-model="filterCategory" class="input filter-select">
+        <option value="">Semua Kategori</option>
+        <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+      </select>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loading" class="loading-state">
+      <div class="spinner-large"></div>
+      <p>Memuat data area...</p>
+    </div>
+
+    <!-- Table -->
+    <div v-else class="card table-card animate-slide-up">
+      <div v-if="filteredAreas.length === 0" class="empty-state">
+        <div class="empty-icon">🏢</div>
+        <h3>Tidak ada area ditemukan</h3>
+        <p>Coba ubah filter atau tambahkan area baru.</p>
+      </div>
+
+      <div v-else class="table-responsive">
+        <table class="audit-table areas-table">
+          <thead>
+            <tr>
+              <th>Kode</th>
+              <th>Nama Area</th>
+              <th>Kategori</th>
+              <th>Lokasi</th>
+              <th>Objek</th>
+              <th>QR</th>
+              <th>Aksi</th>
             </tr>
-            <!-- Expanded Details -->
-            <tr v-if="expandedArea === area.id" class="expanded-row">
-              <td colspan="6" class="p-0">
-                <div class="p-6 bg-black/20 border-b border-white/10">
-                  <h3 class="font-bold text-lg mb-4 text-primary">Rincian Area & Ruangan</h3>
-                  <div class="grid-rooms">
-                    <div v-for="(objects, roomName) in groupByRoom(area.area_objects)" :key="roomName" class="room-card">
-                      <div class="room-header">{{ roomName || 'Umum' }}</div>
-                      <ul class="object-list">
-                        <li v-for="obj in objects" :key="obj.id">
-                          <span class="mr-2">{{ obj.cleaning_object?.icon || '🔹' }}</span>
-                          {{ obj.cleaning_object?.name || 'Unknown' }}
-                        </li>
-                      </ul>
+          </thead>
+          <tbody>
+            <template v-for="area in filteredAreas" :key="area.id">
+              <tr class="area-row" :class="{ expanded: expandedArea === area.id }" @click="toggleArea(area.id)">
+                <td>
+                  <span class="area-code-badge">{{ area.code }}</span>
+                </td>
+                <td>
+                  <span class="area-name-cell">{{ area.name }}</span>
+                </td>
+                <td>
+                  <span class="badge badge-category">{{ area.category }}</span>
+                </td>
+                <td>
+                  <div class="location-cell">
+                    <span class="building-name">{{ area.floor?.building?.name || '-' }}</span>
+                    <span class="floor-name">{{ area.floor?.name || '-' }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="object-count">{{ area.area_objects?.length || 0 }}</span>
+                </td>
+                <td>
+                  <span v-if="area.qr_code" class="qr-badge qr-active">✅ Aktif</span>
+                  <span v-else class="qr-badge qr-missing">⚠️ Belum</span>
+                </td>
+                <td @click.stop>
+                  <div class="action-btns">
+                    <button class="action-btn" @click="toggleArea(area.id)" :title="expandedArea === area.id ? 'Tutup' : 'Detail'">
+                      {{ expandedArea === area.id ? '▲' : '▼' }}
+                    </button>
+                    <button v-if="area.qr_code" class="action-btn action-print" @click="printQr(area)" title="Cetak QR">🖨️</button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Expanded Detail -->
+              <tr v-if="expandedArea === area.id" class="detail-row">
+                <td colspan="7">
+                  <div class="detail-panel">
+                    <div class="detail-header">
+                      <h4>📋 Rincian Area & Ruangan</h4>
+                      <span class="detail-count">{{ area.area_objects?.length || 0 }} objek pembersihan</span>
+                    </div>
+                    <div v-if="area.area_objects && area.area_objects.length > 0" class="rooms-grid">
+                      <div v-for="(objects, roomName) in groupByRoom(area.area_objects)" :key="roomName" class="room-card">
+                        <div class="room-header">
+                          <span class="room-name">🏠 {{ roomName || 'Umum' }}</span>
+                          <span class="room-count">{{ objects.length }} item</span>
+                        </div>
+                        <ul class="object-list">
+                          <li v-for="obj in objects" :key="obj.id">
+                            <span class="obj-icon">{{ obj.cleaning_object?.icon || '🔹' }}</span>
+                            <span class="obj-name">{{ obj.cleaning_object?.name || 'Unknown' }}</span>
+                            <span v-if="obj.is_required" class="obj-required">Wajib</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div v-else class="no-objects">
+                      <p>Belum ada objek pembersihan untuk area ini.</p>
                     </div>
                   </div>
-                </div>
-              </td>
-            </tr>
-          </template>
-          <tr v-if="areas.length === 0">
-            <td colspan="5" class="text-center p-8 text-muted-foreground">Belum ada area yang terdaftar.</td>
-          </tr>
-        </tbody>
-      </table>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
+.areas-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-.data-table th, .data-table td {
-  padding: 1rem;
-  border-bottom: 1px solid hsl(var(--border));
+/* Header */
+.page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.page-title { font-size: 1.5rem; font-weight: 700; color: hsl(var(--foreground)); display: flex; align-items: center; gap: 0.5rem; margin: 0; }
+.title-icon { font-size: 1.75rem; }
+.page-subtitle { font-size: 0.875rem; color: hsl(var(--muted-foreground)); margin-top: 0.25rem; }
+.header-actions { display: flex; gap: 0.5rem; }
+
+/* Stats */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+@media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.stat-card {
+  background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+  padding: 1.25rem; display: flex; align-items: center; gap: 1rem;
+  transition: all 0.3s; position: relative; overflow: hidden;
+}
+.stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; opacity: 0; transition: opacity 0.3s; }
+.stat-card:hover::before { opacity: 1; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px hsl(var(--primary) / 0.08); }
+.stat-card:nth-child(1)::before { background: hsl(var(--primary)); }
+.stat-card:nth-child(2)::before { background: hsl(var(--accent)); }
+.stat-card:nth-child(3)::before { background: hsl(var(--success)); }
+.stat-card:nth-child(4)::before { background: hsl(var(--warning)); }
+
+.stat-icon { font-size: 1.25rem; width: 3rem; height: 3rem; display: flex; align-items: center; justify-content: center; border-radius: 0.75rem; flex-shrink: 0; }
+.stat-icon-total { background: hsl(var(--primary) / 0.12); }
+.stat-icon-objects { background: hsl(var(--accent) / 0.12); }
+.stat-icon-qr { background: hsl(var(--success) / 0.12); }
+.stat-icon-noqr { background: hsl(var(--warning) / 0.12); }
+.stat-info { display: flex; flex-direction: column; }
+.stat-value { font-size: 1.75rem; font-weight: 800; line-height: 1; color: hsl(var(--foreground)); }
+.stat-label { font-size: 0.75rem; color: hsl(var(--muted-foreground)); margin-top: 0.25rem; font-weight: 500; }
+
+/* Filters */
+.filters-bar { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.search-wrapper { position: relative; flex: 1; min-width: 200px; }
+.search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); font-size: 0.875rem; pointer-events: none; }
+.search-input { padding-left: 2.25rem !important; }
+.filter-select { width: auto; min-width: 150px; }
+
+/* Table */
+.table-card { padding: 0; overflow: hidden; }
+.table-responsive { overflow-x: auto; }
+
+.area-row { cursor: pointer; transition: background 0.2s; }
+.area-row:hover { background: hsl(var(--muted) / 0.3) !important; }
+.area-row.expanded td { background: hsl(var(--primary) / 0.04); border-bottom-color: transparent; }
+
+.area-code-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
 }
 
-.data-table th {
-  background: rgba(255, 255, 255, 0.02);
-  font-weight: 600;
+.area-name-cell { font-weight: 600; font-size: 0.875rem; }
+
+.badge-category {
+  background: hsl(var(--accent) / 0.12);
+  color: hsl(var(--accent));
+  font-size: 0.6875rem;
+}
+
+.location-cell { display: flex; flex-direction: column; gap: 0.0625rem; }
+.building-name { font-size: 0.8125rem; font-weight: 500; }
+.floor-name { font-size: 0.6875rem; color: hsl(var(--muted-foreground)); }
+
+.object-count {
+  font-weight: 700;
   font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted));
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.375rem;
+  display: inline-block;
+}
+
+.qr-badge { font-size: 0.75rem; font-weight: 500; padding: 0.25rem 0.5rem; border-radius: 0.375rem; }
+.qr-active { background: hsl(var(--success) / 0.12); color: hsl(var(--success)); }
+.qr-missing { background: hsl(var(--warning) / 0.12); color: hsl(var(--warning)); }
+
+/* Action Buttons */
+.action-btns { display: flex; gap: 0.25rem; }
+.action-btn {
+  width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;
+  border: 1px solid hsl(var(--border)); background: hsl(var(--card));
+  border-radius: 0.375rem; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;
   color: hsl(var(--muted-foreground));
 }
+.action-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.action-print:hover { background: hsl(var(--primary) / 0.1); border-color: hsl(var(--primary) / 0.3); }
 
-.data-table tr:last-child td {
-  border-bottom: none;
+/* Detail Panel */
+.detail-row td { padding: 0 !important; background: hsl(var(--card)) !important; }
+
+.detail-panel {
+  border-top: 2px solid hsl(var(--primary) / 0.2);
+  border-bottom: 2px solid hsl(var(--primary) / 0.2);
+  background: hsl(var(--muted) / 0.2);
+  padding: 1.25rem 1.5rem;
+  animation: slideDown 0.3s ease-out;
 }
 
-.data-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 600px; }
 }
 
-.spinner-large {
-  width: 2rem;
-  height: 2rem;
-  border: 3px solid rgba(255,255,255,0.3);
-  border-top-color: hsl(var(--primary));
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+.detail-header h4 { font-size: 0.9375rem; font-weight: 700; color: hsl(var(--foreground)); margin: 0; }
+.detail-count { font-size: 0.75rem; color: hsl(var(--muted-foreground)); background: hsl(var(--muted)); padding: 0.25rem 0.625rem; border-radius: 0.25rem; }
 
-/* Utils */
-.flex { display: flex; }
-.justify-between { justify-content: space-between; }
-.justify-center { justify-content: center; }
-.items-center { align-items: center; }
-.mb-6 { margin-bottom: 1.5rem; }
-.p-0 { padding: 0; }
-.p-8 { padding: 2rem; }
-.p-12 { padding: 3rem; }
-.overflow-hidden { overflow: hidden; }
-.text-center { text-align: center; }
-.text-2xl { font-size: 1.5rem; font-weight: 700; }
-.font-bold { font-weight: 700; }
-.text-muted-foreground { color: hsl(var(--muted-foreground)); }
-
-.cursor-pointer { cursor: pointer; }
-.bg-black\/20 { background-color: rgba(0, 0, 0, 0.2); }
-.border-white\/10 { border-color: rgba(255, 255, 255, 0.1); }
-.text-lg { font-size: 1.125rem; }
-.mb-4 { margin-bottom: 1rem; }
-.mr-2 { margin-right: 0.5rem; }
-
-.grid-rooms {
+.rooms-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
 }
 
 .room-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .room-header {
-  padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  font-weight: 600;
-  font-size: 0.875rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 0.75rem;
+  background: hsl(var(--muted) / 0.5);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
-.object-list {
-  list-style: none;
-  padding: 0.5rem 0.75rem;
-  margin: 0;
-  font-size: 0.8125rem;
-  color: hsl(var(--muted-foreground));
-}
+.room-name { font-weight: 600; font-size: 0.8125rem; }
+.room-count { font-size: 0.6875rem; color: hsl(var(--muted-foreground)); background: hsl(var(--muted)); padding: 0.125rem 0.375rem; border-radius: 0.25rem; }
 
+.object-list { list-style: none; padding: 0.5rem 0.75rem; margin: 0; }
 .object-list li {
-  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0;
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground) / 0.85);
 }
 
-.object-list li:last-child {
-  margin-bottom: 0;
+.obj-icon { font-size: 0.875rem; flex-shrink: 0; }
+.obj-name { flex: 1; }
+.obj-required {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.1);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.125rem;
+  letter-spacing: 0.04em;
 }
+
+.no-objects { text-align: center; padding: 1rem; color: hsl(var(--muted-foreground)); font-size: 0.875rem; }
+
+/* Loading/Empty */
+.loading-state { display: flex; flex-direction: column; align-items: center; padding: 4rem 2rem; gap: 1rem; color: hsl(var(--muted-foreground)); }
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 4rem 2rem; text-align: center; }
+.empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+.empty-state h3 { font-size: 1.125rem; font-weight: 600; color: hsl(var(--foreground)); margin: 0 0 0.5rem; }
+.empty-state p { font-size: 0.875rem; color: hsl(var(--muted-foreground)); margin: 0; }
+
+.spinner-large { width: 3rem; height: 3rem; border: 4px solid rgba(255,255,255,0.1); border-top-color: hsl(var(--primary)); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

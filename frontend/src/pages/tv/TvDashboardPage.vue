@@ -95,7 +95,7 @@ onUnmounted(() => {
           </div>
           <div class="p-6 flex-1 overflow-hidden">
             <div class="activity-feed">
-              <div v-for="(act, idx) in stats.recent_activities" :key="idx" class="feed-item animate-slide-up" :style="{ animationDelay: `${idx * 0.1}s` }">
+              <div v-for="(act, idx) in stats.recent_activities" :key="idx" class="feed-item animate-slide-up" :style="{ animationDelay: `${Number(idx) * 0.1}s` }">
                 <div class="feed-time">{{ act.time }}</div>
                 <div class="feed-content">
                   <div class="text-xl font-bold">{{ act.area }}</div>

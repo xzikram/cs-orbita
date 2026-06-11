@@ -29,6 +29,7 @@ class CleaningActivityController extends Controller
             ->when($request->area_id, fn($q, $v) => $q->where('area_id', $v))
             ->when($request->shift_id, fn($q, $v) => $q->where('shift_id', $v))
             ->when($request->status, fn($q, $v) => $q->where('status', $v))
+            ->when($request->approval_status, fn($q, $v) => $q->where('approval_status', $v))
             ->latest('date')
             ->latest('start_time');
 

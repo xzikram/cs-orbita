@@ -62,7 +62,7 @@ async function onScanSuccess(decodedText: string) {
   }
 }
 
-function onScanFailure(errorMessage: string) {
+function onScanFailure() {
   // Ignore regular frame failures
 }
 
