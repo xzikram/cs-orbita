@@ -7,13 +7,16 @@ interface User {
   name: string
   username: string | null
   email: string | null
+  employee_id?: string | null
   role: string
   role_label: string
   device_id: string | null
   is_active: boolean
+  areas?: Array<{ id: number; code: string; name: string }>
 }
 
 const users = ref<User[]>([])
+const areas = ref<any[]>([])
 const loading = ref(true)
 const error = ref('')
 const showForm = ref(false)
@@ -24,9 +27,11 @@ const form = ref({
   name: '',
   username: '',
   email: '',
+  employee_id: '',
   password: '',
   role: 'cleaning_service',
-  is_active: true
+  is_active: true,
+  area_ids: [] as number[]
 })
 
 const roles = [
@@ -60,9 +65,27 @@ async function fetchUsers() {
   }
 }
 
+async function fetchAreas() {
+  try {
+    const response = await api.get('/api/v1/areas')
+    areas.value = response.data.data || response.data
+  } catch (err: any) {
+    console.error('Gagal mengambil data area:', err)
+  }
+}
+
 function openAddForm() {
   editingUser.value = null
-  form.value = { name: '', username: '', email: '', password: '', role: 'cleaning_service', is_active: true }
+  form.value = { 
+    name: '', 
+    username: '', 
+    email: '', 
+    employee_id: '',
+    password: '', 
+    role: 'cleaning_service', 
+    is_active: true,
+    area_ids: []
+  }
   showForm.value = true
 }
 
@@ -72,9 +95,11 @@ function openEditForm(user: User) {
     name: user.name,
     username: user.username || '',
     email: user.email || '',
+    employee_id: user.employee_id || '',
     password: '',
     role: user.role,
-    is_active: user.is_active
+    is_active: user.is_active,
+    area_ids: user.areas ? user.areas.map(a => a.id) : []
   }
   showForm.value = true
 }
@@ -128,6 +153,7 @@ async function resetDevice(user: User) {
 
 onMounted(() => {
   fetchUsers()
+  fetchAreas()
 })
 </script>
 
@@ -163,7 +189,11 @@ onMounted(() => {
         </div>
         <div class="form-group">
           <label class="label">Email</label>
-          <input type="email" v-model="form.email" class="input" />
+          <input type="email" v-model="form.email" class="input" placeholder="contoh@cleantrack.id (Opsional)" />
+        </div>
+        <div class="form-group">
+          <label class="label">ID Karyawan / Employee ID</label>
+          <input type="text" v-model="form.employee_id" class="input" placeholder="Misal: CS002 (Opsional)" />
         </div>
         <div class="form-group">
           <label class="label">Password {{ editingUser ? '(kosongkan jika tidak diubah)' : '' }}</label>
@@ -179,6 +209,21 @@ onMounted(() => {
           <input type="checkbox" v-model="form.is_active" id="is_active" />
           <label for="is_active">Aktif</label>
         </div>
+        
+        <!-- Akses Area (Akses Group) -->
+        <div class="form-group full-width mt-4">
+          <label class="label font-bold mb-2">Akses Area Pembersihan (Akses Group)</label>
+          <div class="area-checkbox-grid">
+            <label v-for="area in areas" :key="area.id" class="area-checkbox-item">
+              <input type="checkbox" :value="area.id" v-model="form.area_ids" />
+              <div class="area-info ml-2">
+                <span class="area-name font-medium text-sm">{{ area.name }}</span>
+                <span class="area-code text-xs text-muted-foreground ml-1">({{ area.code }})</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <div class="form-group full-width flex justify-end gap-2 mt-4">
           <button type="button" class="btn btn-ghost" @click="showForm = false">Batal</button>
           <button type="submit" class="btn btn-primary">{{ editingUser ? 'Simpan Perubahan' : 'Tambah User' }}</button>
@@ -212,8 +257,15 @@ onMounted(() => {
           <tr v-else v-for="user in filteredUsers" :key="user.id">
             <td class="font-medium">{{ user.name }}</td>
             <td>
-              <div>{{ user.username || '-' }}</div>
-              <div class="text-xs text-muted-foreground">{{ user.email || '-' }}</div>
+              <div class="font-semibold">{{ user.username || '-' }}</div>
+              <div class="text-xs text-muted-foreground">{{ user.email || '-' }} <span v-if="user.employee_id" class="text-muted-foreground/60">({{ user.employee_id }})</span></div>
+              
+              <!-- Assigned Areas Badges -->
+              <div v-if="user.areas && user.areas.length > 0" class="mt-1-5 flex flex-wrap gap-1">
+                <span v-for="a in user.areas" :key="a.id" class="badge badge-secondary text-2xs px-1.5 py-0.5" style="font-size: 0.7rem; opacity: 0.9;">
+                  📍 {{ a.name }}
+                </span>
+              </div>
             </td>
             <td>
               <span class="badge" :class="{
@@ -267,6 +319,41 @@ onMounted(() => {
   text-align: center;
   border: 1px solid hsl(var(--destructive) / 0.3);
 }
+
+.area-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+}
+.area-checkbox-item {
+  display: flex;
+  align-items: center;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255,255,255,0.03);
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.area-checkbox-item:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: hsl(var(--primary) / 0.3);
+}
+.area-checkbox-item input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+.ml-2 { margin-left: 0.5rem; }
+.ml-1 { margin-left: 0.25rem; }
+.mt-1-5 { margin-top: 0.375rem; }
+.flex-wrap { flex-wrap: wrap; }
 
 /* Utils */
 .flex { display: flex; }

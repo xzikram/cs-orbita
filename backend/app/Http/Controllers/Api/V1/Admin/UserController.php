@@ -34,8 +34,9 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'employee_id' => 'required|string|max:30|unique:users,employee_id',
+            'username' => 'required|string|max:255|unique:users,username',
+            'email' => 'nullable|email|unique:users,email',
+            'employee_id' => 'nullable|string|max:30|unique:users,employee_id',
             'phone' => 'nullable|string|max:20',
             'role' => 'required|in:' . implode(',', array_column(RoleEnum::cases(), 'value')),
             'password' => 'required|string|min:8',
@@ -45,9 +46,10 @@ class UserController extends Controller
 
         $user = User::create([
             'name' => $validated['name'],
-            'email' => $validated['email'],
-            'employee_id' => $validated['employee_id'],
-            'phone' => $validated['phone'],
+            'username' => $validated['username'],
+            'email' => $validated['email'] ?? null,
+            'employee_id' => $validated['employee_id'] ?? null,
+            'phone' => $validated['phone'] ?? null,
             'role' => $validated['role'],
             'password' => Hash::make($validated['password']),
         ]);
@@ -66,8 +68,9 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $user->id,
-            'employee_id' => 'sometimes|string|max:30|unique:users,employee_id,' . $user->id,
+            'username' => 'sometimes|string|max:255|unique:users,username,' . $user->id,
+            'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'employee_id' => 'nullable|string|max:30|unique:users,employee_id,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'role' => 'sometimes|in:' . implode(',', array_column(RoleEnum::cases(), 'value')),
             'is_active' => 'sometimes|boolean',
