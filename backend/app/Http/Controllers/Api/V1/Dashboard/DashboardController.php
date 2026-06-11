@@ -294,6 +294,55 @@ class DashboardController extends Controller
             ->orderBy('day')
             ->get();
 
+        // Top Staff Leaderboard
+        $topStaff = CleaningActivity::whereBetween('date', [$startDate, $endDate])
+            ->where('status', ActivityStatus::COMPLETED)
+            ->select('user_id', DB::raw('COUNT(*) as completed_count'))
+            ->groupBy('user_id')
+            ->orderByDesc('completed_count')
+            ->with('user:id,name,employee_id')
+            ->take(5)
+            ->get()
+            ->map(fn($item) => [
+                'name' => $item->user->name ?? 'Staf Tidak Dikenal',
+                'employee_id' => $item->user->employee_id ?? '-',
+                'completed' => $item->completed_count
+            ]);
+
+        // Bottom Areas Leaderboard
+        $areaStats = CleaningActivity::whereBetween('date', [$startDate, $endDate])
+            ->select(
+                'area_id',
+                DB::raw('COUNT(*) as total_count'),
+                DB::raw('SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed_count')
+            )
+            ->groupBy('area_id')
+            ->get();
+
+        $bottomAreas = $areaStats->map(function ($item) {
+            $rate = $item->total_count > 0 ? round(($item->completed_count / $item->total_count) * 100, 1) : 0;
+            return [
+                'area_id' => $item->area_id,
+                'total' => $item->total_count,
+                'completed' => $item->completed_count,
+                'rate' => $rate
+            ];
+        })
+        ->sortBy('rate')
+        ->take(5)
+        ->values();
+
+        $areaIds = $bottomAreas->pluck('area_id');
+        $areas = Area::whereIn('id', $areaIds)->get(['id', 'name', 'code'])->keyBy('id');
+
+        $bottomAreasFormatted = $bottomAreas->map(fn($item) => [
+            'name' => $areas[$item['area_id']]->name ?? 'Area Tidak Dikenal',
+            'code' => $areas[$item['area_id']]->code ?? '-',
+            'rate' => $item['rate'],
+            'completed' => $item['completed'],
+            'total' => $item['total']
+        ]);
+
         return response()->json([
             'data' => [
                 'period' => ['start' => $startDate, 'end' => $endDate],
@@ -310,6 +359,8 @@ class DashboardController extends Controller
                 'complaint_resolution_rate' => $complaints > 0
                     ? round(($resolvedComplaints / $complaints) * 100, 1) : 0,
                 'daily_trend' => $dailyTrend,
+                'top_staff' => $topStaff,
+                'bottom_areas' => $bottomAreasFormatted,
             ],
         ]);
     }

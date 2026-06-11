@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '../../lib/axios'
 
 const month = ref(new Date().getMonth() + 1)
@@ -13,28 +13,41 @@ const loading = ref({
   'matrix-excel': false
 })
 
+const toast = ref<{ show: boolean; message: string; type: string }>({ show: false, message: '', type: 'success' })
+
+function showToast(message: string, type = 'success') {
+  toast.value = { show: true, message, type }
+  setTimeout(() => {
+    toast.value.show = false
+  }, 4000)
+}
+
 async function fetchAreas() {
   try {
     const { data } = await api.get('/api/v1/areas')
-    areas.value = data.data
+    areas.value = data.data || data
     if (areas.value.length > 0) {
       areaId.value = areas.value[0].id
     }
-  } catch (e) {
-    console.error('Failed to load areas', e)
+  } catch (e: any) {
+    showToast('Gagal memuat daftar area: ' + e.message, 'error')
   }
 }
 
-import { onMounted } from 'vue'
 onMounted(() => {
   fetchAreas()
 })
 
 async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
-  loading.value[type as keyof typeof loading.value] = true
+  loading.value[type] = true
   try {
     const params: any = { month: month.value, year: year.value }
     if (type === 'matrix-excel') {
+      if (!areaId.value) {
+        showToast('Pilih area terlebih dahulu untuk mengunduh Laporan Matrix.', 'error')
+        loading.value[type] = false
+        return
+      }
       params.area_id = areaId.value
     }
     
@@ -70,31 +83,40 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
     link.click()
     link.remove()
     window.URL.revokeObjectURL(url)
-  } catch (e) {
+    
+    showToast(`Berhasil mengunduh laporan ${type === 'matrix-excel' ? 'Excel Matrix' : 'CSV'}!`, 'success')
+  } catch (e: any) {
     console.error(e)
-    alert('Gagal mengunduh laporan')
+    showToast('Gagal mengunduh laporan. Silakan coba beberapa saat lagi.', 'error')
   } finally {
-    loading.value[type as keyof typeof loading.value] = false
+    loading.value[type] = false
   }
 }
 </script>
 
 <template>
   <div class="reports-page animate-fade-in">
+    <!-- Toast notification -->
+    <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
+      {{ toast.message }}
+    </div>
+
     <div class="flex justify-between items-center mb-6">
       <div>
         <h1 class="text-2xl font-bold">Laporan & Ekspor</h1>
-        <p class="text-muted-foreground">Unduh laporan aktivitas kebersihan dan hasil audit</p>
+        <p class="text-muted-foreground">Unduh file laporan berkala aktivitas kebersihan, audit, dan matrix ruangan.</p>
       </div>
     </div>
 
-    <!-- Filter Card -->
-    <div class="card mb-6 animate-slide-up border-primary">
-      <h2 class="font-bold mb-4">Pilih Periode Laporan</h2>
-      <div class="flex gap-4">
+    <!-- Filter Periode Card -->
+    <div class="card filter-card mb-6 animate-slide-up">
+      <h2 class="font-bold mb-4 flex items-center gap-2">
+        <span>📅</span> Pilih Periode Laporan
+      </h2>
+      <div class="filter-row">
         <div class="form-group flex-1">
           <label class="label">Bulan</label>
-          <select v-model="month" class="input">
+          <select v-model="month" class="input select-input">
             <option :value="1">Januari</option>
             <option :value="2">Februari</option>
             <option :value="3">Maret</option>
@@ -109,106 +131,216 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
             <option :value="12">Desember</option>
           </select>
         </div>
+        
         <div class="form-group flex-1">
           <label class="label">Tahun</label>
-          <select v-model="year" class="input">
+          <select v-model="year" class="input select-input">
             <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
             <option :value="new Date().getFullYear()">{{ new Date().getFullYear() }}</option>
           </select>
         </div>
+
         <div class="form-group flex-1">
-          <label class="label">Area (Khusus Matrix)</label>
-          <select v-model="areaId" class="input">
-            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+          <label class="label">Pilih Ruangan/Area <span class="text-xs text-muted-foreground">(Khusus Matrix)</span></label>
+          <select v-model="areaId" class="input select-input" :disabled="areas.length === 0">
+            <option value="">Pilih Area...</option>
+            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
           </select>
         </div>
       </div>
     </div>
 
-    <!-- Export Cards -->
+    <!-- Export Grid Layout -->
     <div class="export-grid">
-      <div class="card-stat animate-slide-up stagger-1">
-        <div class="stat-header">
-          <span class="stat-title">Laporan Kebersihan Bulanan</span>
-          <span class="stat-icon text-primary">📊</span>
+      <!-- Monthly CSV Report -->
+      <div class="card-stat animate-slide-up stagger-1 flex flex-col justify-between">
+        <div>
+          <div class="stat-header">
+            <span class="stat-title-custom">Aktivitas Pembersihan</span>
+            <span class="format-badge csv">CSV</span>
+          </div>
+          <div class="desc-box">
+            <p class="text-sm text-muted-foreground mt-3">
+              Mengekspor log lengkap seluruh pembersihan harian, jam mulai/selesai, pencapaian SLA tepat waktu, durasi pengerjaan, nama petugas, serta catatan kendala operasional lapangan.
+            </p>
+          </div>
         </div>
-        <p class="text-muted-foreground text-sm mb-4">
-          Export data aktivitas pembersihan harian, status SLA, durasi pengerjaan, dan catatan kendala per area.
-        </p>
-        <button class="btn btn-primary w-full" @click="downloadReport('monthly')" :disabled="loading.monthly">
-          <span v-if="loading.monthly" class="spinner-small mr-2"></span>
-          {{ loading.monthly ? 'Memproses...' : 'Unduh CSV (Aktivitas)' }}
+        <button class="btn btn-primary w-full mt-6 flex items-center justify-center gap-2" @click="downloadReport('monthly')" :disabled="loading.monthly">
+          <span v-if="loading.monthly" class="spinner-small"></span>
+          <span>{{ loading.monthly ? 'Memproses...' : 'Unduh Laporan Aktivitas (.csv)' }}</span>
         </button>
       </div>
 
-      <div class="card-stat animate-slide-up stagger-2">
-        <div class="stat-header">
-          <span class="stat-title">Laporan Audit & Inspeksi</span>
-          <span class="stat-icon text-accent">📋</span>
+      <!-- Audit CSV Report -->
+      <div class="card-stat animate-slide-up stagger-2 flex flex-col justify-between">
+        <div>
+          <div class="stat-header">
+            <span class="stat-title-custom">Rekap Audit & Kepatuhan</span>
+            <span class="format-badge csv">CSV</span>
+          </div>
+          <div class="desc-box">
+            <p class="text-sm text-muted-foreground mt-3">
+              Mengekspor rekapitulasi data audit berkala oleh supervisor, rata-rata skor kebersihan/kerapihan/SOP, rincian status lulus/gagal, serta deskripsi catatan temuan inspeksi.
+            </p>
+          </div>
         </div>
-        <p class="text-muted-foreground text-sm mb-4">
-          Export rekapitulasi skor audit, temuan inspeksi supervisor, dan kepatuhan standar kebersihan rumah sakit.
-        </p>
-        <button class="btn btn-primary w-full" @click="downloadReport('audit')" :disabled="loading.audit">
-          <span v-if="loading.audit" class="spinner-small mr-2"></span>
-          {{ loading.audit ? 'Memproses...' : 'Unduh CSV (Audit)' }}
+        <button class="btn btn-primary w-full mt-6 flex items-center justify-center gap-2" @click="downloadReport('audit')" :disabled="loading.audit">
+          <span v-if="loading.audit" class="spinner-small"></span>
+          <span>{{ loading.audit ? 'Memproses...' : 'Unduh Laporan Audit (.csv)' }}</span>
         </button>
       </div>
 
-      <div class="card-stat animate-slide-up stagger-3" style="grid-column: 1 / -1;">
-        <div class="stat-header">
-          <span class="stat-title">Laporan Matrix Ceklist Kebersihan</span>
-          <span class="stat-icon text-accent">📝</span>
+      <!-- Matrix Excel Report -->
+      <div class="card-stat animate-slide-up stagger-3 flex flex-col justify-between full-width">
+        <div>
+          <div class="stat-header">
+            <span class="stat-title-custom text-primary-gradient">Tabel Ceklist Ruangan (Format RS JEC Orbita)</span>
+            <span class="format-badge xls">EXCEL</span>
+          </div>
+          <div class="desc-box">
+            <p class="text-sm text-muted-foreground mt-2">
+              Mengekspor matriks visual tanda ceklist (v) per item kebersihan, per shift aktif harian (1 & 2), lengkap dengan nama ruangan, tanda tangan paraf petugas/PJ, dan penanggung jawab unit sesuai format cetak fisik RS JEC Orbita.
+            </p>
+          </div>
         </div>
-        <p class="text-muted-foreground text-sm mb-4">
-          Export laporan kebersihan dalam format Matrix / Tabel per ruangan seperti format standar RS JEC Orbita.
-        </p>
-        <button class="btn btn-primary w-full" @click="downloadReport('matrix-excel')" :disabled="loading['matrix-excel']">
-          <span v-if="loading['matrix-excel']" class="spinner-small mr-2"></span>
-          {{ loading['matrix-excel'] ? 'Memproses...' : 'Unduh Excel (.xls)' }}
-        </button>
+        
+        <div class="flex items-center gap-4 mt-6">
+          <div class="flex-1 text-xs text-muted-foreground" v-if="areaId">
+            Lokasi terpilih: <b>{{ areas.find(a => a.id === areaId)?.name || 'Unknown' }}</b>
+          </div>
+          <div class="flex-1 text-xs text-destructive font-bold" v-else>
+            ⚠️ Pilih area/lokasi di atas untuk mengaktifkan unduhan.
+          </div>
+          
+          <button class="btn btn-primary btn-xls-action" @click="downloadReport('matrix-excel')" :disabled="loading['matrix-excel'] || !areaId">
+            <span v-if="loading['matrix-excel']" class="spinner-small"></span>
+            <span>{{ loading['matrix-excel'] ? 'Memproses...' : 'Unduh Matrix Excel (.xls)' }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Toast Notification */
+.toast {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  color: white;
+  font-weight: 500;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease;
+}
+.toast-success { background: hsl(var(--success)); }
+.toast-error { background: hsl(var(--destructive)); }
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Filter Card Layout */
+.filter-card {
+  background: hsl(var(--card) / 0.95);
+  border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+.filter-row {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.select-input {
+  width: 100%;
+}
+
+/* Export Grid Styling */
 .export-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
 }
 
-.border-primary { border-color: hsl(var(--primary)); }
-.w-full { width: 100%; }
-.flex-1 { flex: 1; }
-.mr-2 { margin-right: 0.5rem; }
+.card-stat {
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
 
-/* Utils */
-.flex { display: flex; }
-.justify-between { justify-content: space-between; }
-.items-center { align-items: center; }
-.gap-4 { gap: 1rem; }
-.mb-4 { margin-bottom: 1rem; }
-.mb-6 { margin-bottom: 1.5rem; }
-.text-2xl { font-size: 1.5rem; line-height: 2rem; }
-.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
-.font-bold { font-weight: 700; }
-.text-primary { color: hsl(var(--primary)); }
-.text-accent { color: hsl(var(--accent)); }
-.text-muted-foreground { color: hsl(var(--muted-foreground)); }
+.card-stat:hover {
+  transform: translateY(-2px);
+  border-color: hsl(var(--primary) / 0.4);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
 
 .stat-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
 }
 
-.stat-title {
-  font-size: 1rem;
+.stat-title-custom {
+  font-size: 1.125rem;
   font-weight: 700;
+  color: hsl(var(--foreground));
 }
+
+.text-primary-gradient {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.format-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+}
+
+.format-badge.csv {
+  background: hsl(210, 80%, 15%);
+  color: hsl(210, 80%, 65%);
+  border: 1px solid hsl(210, 80%, 30%);
+}
+
+.format-badge.xls {
+  background: hsl(142, 70%, 15%);
+  color: hsl(142, 70%, 65%);
+  border: 1px solid hsl(142, 70%, 30%);
+}
+
+.desc-box {
+  min-height: 80px;
+}
+
+.btn-xls-action {
+  min-width: 240px;
+}
+
+/* Utils */
+.w-full { width: 100%; }
+.mt-6 { margin-top: 1.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-2 { margin-top: 0.5rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+.flex-1 { flex: 1; }
 
 .spinner-small {
   width: 1rem;
@@ -224,8 +356,22 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
   to { transform: rotate(360deg); }
 }
 
+/* Responsive */
 @media (max-width: 768px) {
-  .export-grid { grid-template-columns: 1fr; }
-  .flex.gap-4 { flex-direction: column; }
+  .export-grid {
+    grid-template-columns: 1fr;
+  }
+  .filter-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .flex.items-center.gap-4 {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .btn-xls-action {
+    width: 100%;
+    min-width: unset;
+  }
 }
 </style>

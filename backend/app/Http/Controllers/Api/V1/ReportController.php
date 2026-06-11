@@ -86,10 +86,10 @@ class ReportController extends Controller
         $month = $request->query('month', date('m'));
         $year = $request->query('year', date('Y'));
 
-        $audits = AuditScore::with(['area', 'auditor', 'findings'])
-            ->whereMonth('audit_date', $month)
-            ->whereYear('audit_date', $year)
-            ->orderBy('audit_date', 'asc')
+        $audits = AuditScore::with(['cleaningActivity.area', 'auditor', 'findings'])
+            ->whereMonth('audited_at', $month)
+            ->whereYear('audited_at', $year)
+            ->orderBy('audited_at', 'asc')
             ->get();
 
         $filename = "Laporan_Audit_Kebersihan_{$year}_{$month}.csv";
@@ -117,10 +117,10 @@ class ReportController extends Controller
                 
                 fputcsv($file, [
                     $audit->id,
-                    $audit->audit_date->format('Y-m-d'),
-                    $audit->area->name ?? '-',
+                    $audit->audited_at ? $audit->audited_at->format('Y-m-d') : '-',
+                    $audit->cleaningActivity->area->name ?? '-',
                     $audit->auditor->name ?? '-',
-                    $audit->score,
+                    $audit->total_score,
                     $audit->status,
                     $audit->notes ?? $findingsText
                 ]);

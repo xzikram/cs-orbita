@@ -93,6 +93,11 @@ Route::prefix('v1')->group(function () {
         Route::post('/complaints', [ComplaintController::class, 'store']);
         Route::get('/complaints/{complaint}', [ComplaintController::class, 'show']);
         Route::put('/complaints/{complaint}/status', [ComplaintController::class, 'updateStatus']);
+        Route::get('/cleaning-services', function () {
+            return response()->json([
+                'data' => \App\Models\User::where('role', \App\Enums\RoleEnum::CLEANING_SERVICE)->where('is_active', true)->get(['id', 'name', 'employee_id'])
+            ]);
+        });
 
         // ========== ADMIN ==========
         Route::middleware('role:administrator')->group(function () {
