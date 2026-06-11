@@ -55,7 +55,16 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($users as $user) {
-            User::create($user);
+            User::firstOrCreate(
+                ['email' => $user['email']],
+                [
+                    'name' => $user['name'],
+                    'employee_id' => $user['employee_id'],
+                    'phone' => $user['phone'],
+                    'role' => $user['role'],
+                    'password' => $user['password'],
+                ]
+            );
         }
     }
 }

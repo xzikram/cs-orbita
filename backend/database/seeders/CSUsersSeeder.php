@@ -33,13 +33,15 @@ class CSUsersSeeder extends Seeder
         foreach ($csNames as $name) {
             $username = 'cs' . str_pad($index, 3, '0', STR_PAD_LEFT);
             
-            User::create([
-                'name' => $name,
-                'username' => $username,
-                'email' => null,
-                'password' => Hash::make($username), // password sama dengan username
-                'role' => 'cleaning_service',
-            ]);
+            User::firstOrCreate(
+                ['username' => $username],
+                [
+                    'name' => $name,
+                    'email' => null,
+                    'password' => Hash::make($username), // password sama dengan username
+                    'role' => 'cleaning_service',
+                ]
+            );
             
             $index++;
         }
