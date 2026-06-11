@@ -205,7 +205,7 @@ class CleaningActivityController extends Controller
     {
         $request->validate([
             'photos' => 'required|array|max:4',
-            'photos.*.file' => 'required|image|max:2048',
+            'photos.*.file' => 'required|image|max:5120',
             'photos.*.type' => 'required|in:before,after',
         ]);
 

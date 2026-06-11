@@ -64,18 +64,68 @@ async function loadData() {
   }
 }
 
-function handlePhotoUpload(event: Event, type: 'before' | 'after') {
+function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promise<File> {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target?.result as string
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width)
+          width = maxWidth
+        }
+
+        canvas.width = width
+        canvas.height = height
+
+        const ctx = canvas.getContext('2d')
+        ctx?.drawImage(img, 0, 0, width, height)
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              })
+              resolve(compressedFile)
+            } else {
+              resolve(file)
+            }
+          },
+          'image/jpeg',
+          quality
+        )
+      }
+    }
+  })
+}
+
+async function handlePhotoUpload(event: Event, type: 'before' | 'after') {
   const input = event.target as HTMLInputElement
   if (!input.files || input.files.length === 0) return
 
-  const file = input.files[0]
   if (photos.value.length >= maxPhotos) {
     alert(`Maksimal ${maxPhotos} foto`)
     return
   }
 
-  const url = URL.createObjectURL(file)
-  photos.value.push({ file, type, url })
+  const originalFile = input.files[0]
+  try {
+    const compressedFile = await compressImage(originalFile)
+    const url = URL.createObjectURL(compressedFile)
+    photos.value.push({ file: compressedFile, type, url })
+  } catch (err) {
+    console.error('Gagal mengompresi gambar:', err)
+    const url = URL.createObjectURL(originalFile)
+    photos.value.push({ file: originalFile, type, url })
+  }
 }
 
 function removePhoto(index: number) {
