@@ -189,14 +189,19 @@ class MasterDataController extends Controller
                     'name' => $area->name,
                     'category' => $area->category,
                 ],
-                'checklist' => $area->areaObjects->map(fn($ao) => [
-                    'id' => $ao->id,
-                    'object_id' => $ao->cleaning_object_id,
-                    'name' => $ao->cleaningObject->name,
-                    'icon' => $ao->cleaningObject->icon,
-                    'is_required' => $ao->is_required,
-                    'sort_order' => $ao->sort_order,
-                ]),
+                'checklist' => $area->areaObjects->groupBy('room_name')->map(function ($items, $roomName) {
+                    return [
+                        'room_name' => $roomName ?: 'Umum',
+                        'items' => $items->map(fn($ao) => [
+                            'id' => $ao->id,
+                            'object_id' => $ao->cleaning_object_id,
+                            'name' => $ao->cleaningObject->name,
+                            'icon' => $ao->cleaningObject->icon,
+                            'is_required' => $ao->is_required,
+                            'sort_order' => $ao->sort_order,
+                        ])->values(),
+                    ];
+                })->values(),
                 'schedules' => $area->schedules->map(fn($s) => [
                     'id' => $s->id,
                     'shift' => $s->shift->name,
