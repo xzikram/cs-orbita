@@ -44,10 +44,9 @@ onUnmounted(() => {
     <!-- Header -->
     <header class="tv-header">
       <div class="logo">
-        <span class="logo-icon">✨</span>
+        <img src="/Logo%20RS%20JEC%20ORBITA.png" alt="Logo RS JEC Orbita" class="tv-logo-img" />
         <div>
           <h1>CLEANTRACK <span class="text-accent">RS</span></h1>
-          <p>RS Mata JEC Orbita Makassar</p>
         </div>
       </div>
       <div class="clock">
@@ -165,8 +164,10 @@ onUnmounted(() => {
   gap: 1.5rem;
 }
 
-.logo-icon {
-  font-size: 3rem;
+.tv-logo-img {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
 }
 
 .logo h1 {

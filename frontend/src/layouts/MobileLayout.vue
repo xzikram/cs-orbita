@@ -23,7 +23,7 @@ const navItems = [
     <!-- Mobile Header -->
     <header class="mobile-header">
       <div class="mobile-header-content">
-        <span class="mobile-logo">CLEANTRACK</span>
+        <img src="/Logo%20RS%20JEC%20ORBITA.png" alt="Logo RS JEC Orbita" class="mobile-logo-img" />
         <span class="mobile-user">{{ authStore.user?.name }}</span>
       </div>
     </header>
@@ -78,14 +78,11 @@ const navItems = [
   align-items: center;
 }
 
-.mobile-logo {
-  font-size: 1rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, hsl(210, 100%, 56%), hsl(262, 83%, 58%));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.mobile-logo-img {
+  height: 24px;
+  max-width: 180px;
+  width: auto;
+  object-fit: contain;
 }
 
 .mobile-user {

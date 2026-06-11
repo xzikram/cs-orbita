@@ -50,19 +50,87 @@ async function printQr(area: any) {
       <head>
         <title>Print QR - ${area.name}</title>
         <style>
-          body { font-family: sans-serif; text-align: center; padding: 2rem; }
-          .card { border: 2px solid #000; padding: 2rem; display: inline-block; border-radius: 1rem; }
-          .title { font-size: 24px; font-weight: bold; margin-bottom: 1rem; }
-          .code { font-size: 16px; color: #666; margin-bottom: 2rem; }
+          @page {
+            size: A5 portrait;
+            margin: 0;
+          }
+          body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 0;
+            margin: 0;
+            background: #fff;
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+          }
+          .card {
+            border: 2px solid #000;
+            padding: 2.5rem 2rem;
+            width: 118mm;
+            height: 180mm;
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+          }
+          .print-logo {
+            height: 38px;
+            width: auto;
+            object-fit: contain;
+            margin-bottom: 0.5rem;
+          }
+          .header-info {
+            text-align: center;
+            width: 100%;
+          }
+          .title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 0.5rem;
+            margin-bottom: 0.25rem;
+          }
+          .code {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+          #qr-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: auto 0;
+          }
+          #qr-container img {
+            width: 75mm;
+            height: 75mm;
+            object-fit: contain;
+          }
+          .footer {
+            margin-top: 1rem;
+            font-size: 11px;
+            font-weight: bold;
+            color: #888;
+            letter-spacing: 0.05em;
+          }
         </style>
         <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"><\/script>
       </head>
       <body>
         <div class="card">
-          <div class="title">${area.name}</div>
-          <div class="code">${area.code}</div>
+          <img src="/Logo%20RS%20JEC%20ORBITA.png" alt="Logo RS JEC Orbita" class="print-logo" />
+          <div class="header-info">
+            <div class="title">${area.name}</div>
+            <div class="code">${area.code}</div>
+          </div>
           <div id="qr-container"></div>
-          <p style="margin-top: 1rem; font-size: 12px;">CLEANTRACK RS</p>
+          <div class="footer">CLEANTRACK RS</div>
         </div>
         <script>
           const qr = qrcode(0, 'M');

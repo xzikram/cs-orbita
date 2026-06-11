@@ -36,7 +36,6 @@ async function handleLogout() {
     </div>
 
     <button 
-      v-if="authStore.user?.role !== 'cleaning_service'"
       class="btn btn-destructive w-full py-3 animate-slide-up stagger-2" 
       @click="handleLogout"
     >

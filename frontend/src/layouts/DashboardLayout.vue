@@ -86,8 +86,7 @@ async function handleLogout() {
     <aside class="sidebar" :class="{ collapsed: sidebarCollapsed, 'mobile-open': mobileOpen }">
       <div class="sidebar-header">
         <div class="sidebar-logo" v-if="!sidebarCollapsed">
-          <span class="logo-text">CLEANTRACK</span>
-          <span class="logo-badge">RS</span>
+          <img src="/Logo%20RS%20JEC%20ORBITA.png" alt="Logo RS JEC Orbita" class="sidebar-logo-img" />
         </div>
         <button class="sidebar-toggle" @click="sidebarCollapsed = !sidebarCollapsed">
           {{ sidebarCollapsed ? '→' : '←' }}
@@ -175,7 +174,13 @@ async function handleLogout() {
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  max-width: 170px;
+}
+
+.sidebar-logo-img {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
 }
 
 .logo-text {

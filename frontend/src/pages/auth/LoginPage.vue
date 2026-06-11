@@ -30,20 +30,10 @@ async function handleLogin() {
       <!-- Logo / Header -->
       <div class="login-header">
         <div class="logo-icon">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-            <rect width="48" height="48" rx="12" fill="url(#gradient)" />
-            <path d="M14 24L20 30L34 16" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-            <defs>
-              <linearGradient id="gradient" x1="0" y1="0" x2="48" y2="48">
-                <stop stop-color="hsl(210, 100%, 56%)" />
-                <stop offset="1" stop-color="hsl(262, 83%, 58%)" />
-              </linearGradient>
-            </defs>
-          </svg>
+          <img src="/Logo%20RS%20JEC%20ORBITA.png" alt="Logo RS JEC Orbita" class="login-logo-img" />
         </div>
         <h1>CLEANTRACK <span class="text-accent">RS</span></h1>
         <p class="subtitle">Sistem Monitoring Cleaning Service</p>
-        <p class="hospital-name">RS Mata JEC Orbita Makassar</p>
       </div>
 
       <!-- Login Form -->
@@ -155,7 +145,18 @@ async function handleLogin() {
 }
 
 .logo-icon {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.login-logo-img {
+  max-width: 100%;
+  height: auto;
+  max-height: 80px;
+  object-fit: contain;
 }
 
 .login-header h1 {
