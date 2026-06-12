@@ -1337,18 +1337,26 @@ function calculateDuration(start: string, end: string): number | string {
 
   #daily-print-area {
     width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    max-width: 800px !important;
+    margin: 0 auto !important;
+    padding: 40px 30px !important;
+    box-sizing: border-box !important;
     background: white !important;
     color: black !important;
+  }
+
+  .checklist-table-details {
+    width: 95% !important;
+    margin: 0 auto 1.5rem auto !important;
   }
 
   .activity-print-section {
     page-break-after: always;
     border: none !important;
     padding: 0 !important;
-    margin-bottom: 0 !important;
+    margin: 0 auto 2rem auto !important;
     background: white !important;
+    max-width: 740px !important;
   }
 
   .activity-print-section:last-child {
