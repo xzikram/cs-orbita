@@ -236,7 +236,7 @@ onMounted(() => {
         <h2 class="text-3xl font-bold">{{ loading ? '-' : todayTotal }}</h2>
       </div>
       <div class="card-stat animate-slide-up stagger-2">
-        <p class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Selesai</p>
+        <p class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Dikerjakan</p>
         <h2 class="text-3xl font-bold text-success">{{ loading ? '-' : todayCompleted }}</h2>
       </div>
     </div>

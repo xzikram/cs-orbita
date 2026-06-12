@@ -35,25 +35,13 @@ async function onScanSuccess(decodedText: string) {
       await html5QrCode.stop()
     }
 
-    if (!data.data.current_shift) {
-      error.value = 'Tidak ada shift aktif yang cocok dengan waktu saat ini.'
-      loading.value = false
-      return
-    }
-
-    if (data.data.already_cleaned) {
-      error.value = 'Area ini sudah dibersihkan pada shift ini.'
-      loading.value = false
-      return
-    }
-
-    // Go to checklist
+    // Go to checklist (supports continuation of existing activity)
     router.push({ 
       name: 'mobile-checklist', 
       params: { areaId: data.data.area.id },
       query: { 
         uuid: uuid,
-        shift_id: data.data.current_shift.id 
+        continue: data.data.can_continue ? '1' : '0'
       }
     })
   } catch (err: any) {
@@ -61,6 +49,7 @@ async function onScanSuccess(decodedText: string) {
     loading.value = false
   }
 }
+
 
 function onScanFailure() {
   // Ignore regular frame failures

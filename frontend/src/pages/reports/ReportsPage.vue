@@ -204,7 +204,7 @@ function exportDailyToExcel() {
     html += `
       <tr class="shift-header">
         <td colspan="5" class="bold text-left" style="background-color: #d9e1f2;">
-          SHIFT ${act.shift?.name || '-'} (Petugas: ${act.user?.name || '-'} | Jam: ${act.start_time || '-'} - ${act.end_time || '-'})
+          Petugas: ${act.user?.name || '-'} | Jam: ${act.start_time || '-'} - ${act.end_time || '-'}
         </td>
       </tr>
     `
@@ -569,10 +569,8 @@ function calculateDuration(start: string, end: string): number | string {
 
                 <div v-else v-for="(act, idx) in dailyActivities" :key="act.id" class="activity-print-section">
                   <div class="activity-print-header">
-                    <div class="activity-print-shift">Shift {{ act.shift?.name || '-' }}</div>
+                    <div class="activity-print-shift">Petugas: {{ act.user?.name || '-' }}</div>
                     <div class="activity-print-details">
-                      <span>Petugas: <b>{{ act.user?.name || '-' }}</b></span>
-                      <span class="divider">|</span>
                       <span>Waktu: <b>{{ act.start_time || '-' }} - {{ act.end_time || '-' }}</b> ({{ calculateDuration(act.start_time, act.end_time) }} Menit)</span>
                     </div>
                   </div>

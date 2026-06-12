@@ -13,15 +13,14 @@ const route = useRoute()
 const { isOnline } = useOnline()
 
 const uuid = route.query.uuid as string || uuidv4()
-const shiftId = parseInt(route.query.shift_id as string)
+const isContinuation = route.query.continue === '1'
 const authStore = useAuthStore()
 
 const loading = ref(true)
 const submitting = ref(false)
-const submittingDraft = ref(false)
 const area = ref<any>(null)
 const checklist = ref<any[]>([])
-const currentShift = ref<any>(null)
+const lastSavedTime = ref<string | null>(null)
 
 function formatTime(date: Date): string {
   const hours = String(date.getHours()).padStart(2, '0')
@@ -42,6 +41,25 @@ const notes = ref('')
 const photos = ref<Array<{ file: File; type: string; url: string }>>([])
 const maxPhotos = 100
 
+// Count checked items
+const checkedCount = computed(() => {
+  return checklist.value.reduce((total, group) => {
+    return total + group.items.filter((item: any) => item.is_checked).length
+  }, 0)
+})
+
+const totalItems = computed(() => {
+  return checklist.value.reduce((total, group) => {
+    return total + group.items.length
+  }, 0)
+})
+
+const uncheckedRequiredCount = computed(() => {
+  return checklist.value.reduce((total, group) => {
+    return total + group.items.filter((item: any) => item.is_required && !item.is_checked).length
+  }, 0)
+})
+
 async function loadData() {
   loading.value = true
   try {
@@ -55,10 +73,10 @@ async function loadData() {
           is_checked: item.is_checked || false
         }))
       }))
-      currentShift.value = data.data.schedules.find((s: any) => s.shift_id === shiftId)
-      if (data.data.draft) {
-        notes.value = data.data.draft.notes || ''
-        startTime.value = data.data.draft.start_time
+      if (data.data.existing_activity) {
+        notes.value = data.data.existing_activity.notes || ''
+        startTime.value = data.data.existing_activity.start_time
+        lastSavedTime.value = data.data.existing_activity.start_time
       }
     } else {
       // Offline fallback
@@ -177,37 +195,21 @@ function removePhoto(index: number) {
   photos.value.splice(index, 1)
 }
 
-const allRequiredChecked = computed(() => {
-  return checklist.value.every(group => 
-    group.items
-      .filter((item: any) => item.is_required)
-      .every((item: any) => item.is_checked)
-  )
-})
-
-async function submitActivity(isDraft = false) {
-  if (!isDraft && !allRequiredChecked.value) {
-    alert('Pastikan semua objek wajib telah dibersihkan.')
-    return
-  }
-
+async function submitActivity() {
   submitting.value = true
-  submittingDraft.value = isDraft
   const endTime = formatTime(new Date())
   const date = getLocalDateString(new Date())
 
   const activityData = {
     uuid,
     area_id: parseInt(props.areaId),
-    shift_id: shiftId,
     date,
     start_time: startTime.value,
     end_time: endTime,
     notes: notes.value,
-    status: isDraft ? 'in_progress' : 'completed',
     items: checklist.value.flatMap(group => 
       group.items.map((item: any) => ({
-        area_object_id: item.id, // using the Pivot ID
+        area_object_id: item.id,
         is_checked: item.is_checked
       }))
     )
@@ -249,10 +251,9 @@ async function submitActivity(isDraft = false) {
     router.push({ name: 'mobile-dashboard' })
   } catch (e) {
     console.error(e)
-    alert(isDraft ? 'Gagal menyimpan draft' : 'Gagal menyimpan aktivitas')
+    alert('Gagal menyimpan aktivitas')
   } finally {
     submitting.value = false
-    submittingDraft.value = false
   }
 }
 
@@ -268,11 +269,23 @@ onMounted(() => {
       <h2 class="text-xl font-bold">{{ area.name }}</h2>
       <div class="time-info mt-2">
         <span class="badge badge-primary">Mulai: {{ startTime }}</span>
+        <span v-if="isContinuation" class="badge badge-continue">🔄 Melanjutkan</span>
+      </div>
+    </div>
+
+    <!-- Progress Summary -->
+    <div class="card progress-card mt-4 animate-slide-up stagger-1">
+      <div class="progress-info">
+        <span class="text-sm font-medium">Progress Ceklist</span>
+        <span class="text-sm font-bold text-primary">{{ checkedCount }}/{{ totalItems }}</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" :style="{ width: `${totalItems > 0 ? (checkedCount / totalItems * 100) : 0}%` }"></div>
       </div>
     </div>
 
     <!-- Checklist -->
-    <div class="card p-0 mt-4 overflow-hidden animate-slide-up stagger-1">
+    <div class="card p-0 mt-4 overflow-hidden animate-slide-up stagger-2">
       <div v-for="(group, gIndex) in checklist" :key="gIndex">
         <div class="p-4 border-b border-white/10 bg-white/5">
           <h3 class="font-semibold text-sm">{{ group.room_name }}</h3>
@@ -301,7 +314,7 @@ onMounted(() => {
     </div>
 
     <!-- Evidence Photos -->
-    <div class="card mt-4 animate-slide-up stagger-2">
+    <div class="card mt-4 animate-slide-up stagger-3">
       <h3 class="font-semibold text-sm mb-3">Foto Bukti (Sebelum / Sesudah)</h3>
       
       <div class="photo-grid">
@@ -325,7 +338,7 @@ onMounted(() => {
     </div>
 
     <!-- Notes -->
-    <div class="card mt-4 mb-6 animate-slide-up stagger-3">
+    <div class="card mt-4 mb-6 animate-slide-up stagger-4">
       <h3 class="font-semibold text-sm mb-2">Catatan (Opsional)</h3>
       <textarea 
         v-model="notes" 
@@ -334,29 +347,20 @@ onMounted(() => {
       ></textarea>
     </div>
 
-    <!-- Submit Button Container -->
-    <div class="submit-buttons-container mb-4 animate-slide-up stagger-4">
-      <button 
-        class="btn-scan btn-scan-draft" 
-        :class="{ 'opacity-50': submitting }"
-        :disabled="submitting"
-        @click="submitActivity(true)"
-      >
-        <span v-if="submitting && submittingDraft" class="spinner-small"></span>
-        <span v-else>💾 Simpan Draft</span>
-      </button>
+    <!-- Submit Button -->
+    <div class="submit-buttons-container mb-4 animate-slide-up stagger-5">
       <button 
         class="btn-scan btn-scan-final" 
-        :class="{ 'opacity-50': !allRequiredChecked || submitting }"
-        :disabled="!allRequiredChecked || submitting"
-        @click="submitActivity(false)"
+        :class="{ 'opacity-50': submitting }"
+        :disabled="submitting"
+        @click="submitActivity()"
       >
-        <span v-if="submitting && !submittingDraft" class="spinner-small"></span>
-        <span v-else>✅ Selesai & Simpan</span>
+        <span v-if="submitting" class="spinner-small"></span>
+        <span v-else>💾 Simpan</span>
       </button>
     </div>
-    <p v-if="!allRequiredChecked" class="text-center text-xs text-warning mb-6">
-      Selesaikan semua objek wajib untuk menyimpan hasil akhir.
+    <p v-if="uncheckedRequiredCount > 0" class="text-center text-xs text-info mb-6">
+      ℹ️ {{ uncheckedRequiredCount }} item wajib belum dicentang. Anda tetap bisa menyimpan dan melanjutkan nanti.
     </p>
 
   </div>
@@ -382,6 +386,43 @@ onMounted(() => {
   color: hsl(262, 83%, 65%);
   letter-spacing: 0.05em;
   margin-bottom: 0.25rem;
+}
+
+.badge-continue {
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.3);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+.progress-card {
+  padding: 1rem;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 0.375rem;
+  background: hsl(var(--muted));
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
+  border-radius: 9999px;
+  transition: width 0.4s ease-out;
 }
 
 .checklist-list {
@@ -546,6 +587,8 @@ input:checked ~ .checkbox-box::after {
 .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
 .text-xs { font-size: 0.75rem; line-height: 1rem; }
 .text-warning { color: hsl(var(--warning)); }
+.text-info { color: hsl(var(--primary) / 0.8); }
+.text-primary { color: hsl(var(--primary)); }
 .text-muted-foreground { color: hsl(var(--muted-foreground)); }
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
@@ -587,20 +630,7 @@ input:checked ~ .checkbox-box::after {
   width: 100%;
 }
 
-.btn-scan-draft {
-  flex: 1;
-  background: hsl(var(--muted)) !important;
-  color: hsl(var(--foreground)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  box-shadow: none !important;
-}
-
-.btn-scan-draft:hover {
-  background: hsl(var(--muted) / 0.8) !important;
-  box-shadow: none !important;
-}
-
 .btn-scan-final {
-  flex: 1.2;
+  flex: 1;
 }
 </style>

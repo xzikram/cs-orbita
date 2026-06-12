@@ -80,50 +80,57 @@ class CleaningActivityController extends Controller
         $area = $qrCode->area;
         $area->load(['areaObjects.cleaningObject', 'schedules.shift', 'floor.building']);
 
-        // Get current shift (supports shifts crossing midnight)
-        $currentTime = now()->format('H:i:s');
-        $currentShift = \App\Models\Shift::active()
-            ->where(function ($query) use ($currentTime) {
-                $query->where(function ($q) use ($currentTime) {
-                    $q->whereRaw('start_time <= end_time')
-                        ->where('start_time', '<=', $currentTime)
-                        ->where('end_time', '>', $currentTime);
-                })->orWhere(function ($q) use ($currentTime) {
-                    $q->whereRaw('start_time > end_time')
-                        ->where(function ($sub) use ($currentTime) {
-                            $sub->where('start_time', '<=', $currentTime)
-                                ->orWhere('end_time', '>', $currentTime);
-                        });
-                });
-            })
-            ->first();
+        $user = auth()->user();
 
-        // Check if already cleaned today for this shift
+        // Check if there's an existing activity for this user + area + today
         $existingActivity = null;
-        if ($currentShift) {
-            $existingActivity = CleaningActivity::where('area_id', $area->id)
-                ->where('shift_id', $currentShift->id)
+        if ($user) {
+            $existingActivity = CleaningActivity::with('items')
+                ->where('user_id', $user->id)
+                ->where('area_id', $area->id)
                 ->whereDate('date', today())
-                ->where('status', ActivityStatus::COMPLETED)
                 ->first();
         }
+
+        // Build checklist with previously checked items
+        $checklist = $area->areaObjects->groupBy('room_name')->map(function ($items, $roomName) use ($existingActivity) {
+            return [
+                'room_name' => $roomName ?: 'Umum',
+                'items' => $items->map(function ($ao) use ($existingActivity) {
+                    $isChecked = false;
+                    $checkedAt = null;
+                    if ($existingActivity) {
+                        $existingItem = $existingActivity->items
+                            ->where('area_object_id', $ao->id)
+                            ->first();
+                        if ($existingItem && $existingItem->is_checked) {
+                            $isChecked = true;
+                            $checkedAt = $existingItem->checked_at?->toIso8601String();
+                        }
+                    }
+                    return [
+                        'id' => $ao->id,
+                        'name' => $ao->cleaningObject->name,
+                        'icon' => $ao->cleaningObject->icon,
+                        'is_required' => $ao->is_required,
+                        'is_checked' => $isChecked,
+                        'checked_at' => $checkedAt,
+                    ];
+                })->values(),
+            ];
+        })->values();
 
         return response()->json([
             'data' => [
                 'area' => $area,
-                'current_shift' => $currentShift,
-                'already_cleaned' => $existingActivity !== null,
-                'checklist' => $area->areaObjects->groupBy('room_name')->map(function ($items, $roomName) {
-                    return [
-                        'room_name' => $roomName ?: 'Umum',
-                        'items' => $items->map(fn($ao) => [
-                            'id' => $ao->id,
-                            'name' => $ao->cleaningObject->name,
-                            'icon' => $ao->cleaningObject->icon,
-                            'is_required' => $ao->is_required,
-                        ])->values(),
-                    ];
-                })->values(),
+                'existing_activity' => $existingActivity ? [
+                    'id' => $existingActivity->id,
+                    'start_time' => \Carbon\Carbon::parse($existingActivity->start_time)->format('H:i'),
+                    'end_time' => $existingActivity->end_time ? \Carbon\Carbon::parse($existingActivity->end_time)->format('H:i') : null,
+                    'notes' => $existingActivity->notes,
+                ] : null,
+                'can_continue' => $existingActivity !== null,
+                'checklist' => $checklist,
             ],
         ]);
     }
@@ -133,84 +140,100 @@ class CleaningActivityController extends Controller
         $validated = $request->validate([
             'uuid' => 'sometimes|uuid',
             'area_id' => 'required|exists:areas,id',
-            'shift_id' => 'required|exists:shifts,id',
+            'shift_id' => 'nullable|exists:shifts,id',
             'date' => 'required|date',
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.area_object_id' => 'required|exists:area_objects,id',
-            'items.*.is_checked' => 'required|boolean',
+            'items.*.is_checked' => 'sometimes|boolean',
             'device_id' => 'nullable|string',
-            'status' => 'sometimes|string|in:in_progress,completed',
         ]);
 
         return DB::transaction(function () use ($request, $validated) {
-            // Calculate lateness
-            $isLate = false;
-            $lateMinutes = 0;
             $scheduleId = null;
-
-            $schedule = AreaSchedule::where('area_id', $validated['area_id'])
-                ->where('shift_id', $validated['shift_id'])
-                ->first();
-
-            if ($schedule) {
-                $scheduleId = $schedule->id;
+            if (!empty($validated['shift_id'])) {
+                $schedule = AreaSchedule::where('area_id', $validated['area_id'])
+                    ->where('shift_id', $validated['shift_id'])
+                    ->first();
+                if ($schedule) {
+                    $scheduleId = $schedule->id;
+                }
             }
 
-            $status = $request->input('status', 'completed') === 'in_progress'
-                ? ActivityStatus::IN_PROGRESS
-                : ActivityStatus::COMPLETED;
-
-            // Check if there is an existing in_progress activity for this user, area, shift, date
+            // Upsert: find existing activity for this user + area + date
             $activity = CleaningActivity::where('user_id', $request->user()->id)
                 ->where('area_id', $validated['area_id'])
-                ->where('shift_id', $validated['shift_id'])
                 ->whereDate('date', $validated['date'])
-                ->where('status', ActivityStatus::IN_PROGRESS)
                 ->first();
 
             if ($activity) {
+                // Update existing activity
                 $activity->update([
                     'end_time' => $validated['end_time'] ?? now()->format('H:i'),
-                    'notes' => $validated['notes'] ?? null,
-                    'status' => $status,
-                    'is_late' => $isLate,
-                    'late_minutes' => $lateMinutes,
-                    'submitted_at' => $status === ActivityStatus::COMPLETED ? now() : null,
-                    'device_id' => $validated['device_id'] ?? null,
+                    'notes' => $validated['notes'] ?? $activity->notes,
+                    'status' => ActivityStatus::COMPLETED,
+                    'is_late' => false,
+                    'late_minutes' => 0,
+                    'submitted_at' => now(),
+                    'device_id' => $validated['device_id'] ?? $activity->device_id,
                 ]);
-                // Recreate checklist items
-                $activity->items()->delete();
+
+                // Merge checklist items (preserve previously checked items)
+                foreach ($validated['items'] as $item) {
+                    $existingItem = $activity->items()
+                        ->where('area_object_id', $item['area_object_id'])
+                        ->first();
+
+                    $isChecked = $item['is_checked'] ?? false;
+
+                    if ($existingItem) {
+                        // Update: if newly checked, set checked_at; if unchecked, clear it
+                        $existingItem->update([
+                            'is_checked' => $isChecked,
+                            'checked_at' => $isChecked ? ($existingItem->is_checked ? $existingItem->checked_at : now()) : null,
+                        ]);
+                    } else {
+                        // Create new item
+                        ActivityItem::create([
+                            'cleaning_activity_id' => $activity->id,
+                            'area_object_id' => $item['area_object_id'],
+                            'is_checked' => $isChecked,
+                            'checked_at' => $isChecked ? now() : null,
+                        ]);
+                    }
+                }
             } else {
+                // Create new activity
                 $activity = CleaningActivity::create([
                     'uuid' => $validated['uuid'] ?? Str::uuid()->toString(),
                     'area_id' => $validated['area_id'],
                     'user_id' => $request->user()->id,
-                    'shift_id' => $validated['shift_id'],
+                    'shift_id' => $validated['shift_id'] ?? null,
                     'schedule_id' => $scheduleId,
                     'date' => $validated['date'],
                     'start_time' => $validated['start_time'],
                     'end_time' => $validated['end_time'] ?? now()->format('H:i'),
                     'notes' => $validated['notes'] ?? null,
-                    'status' => $status,
+                    'status' => ActivityStatus::COMPLETED,
                     'sync_status' => SyncStatus::SYNCED,
-                    'is_late' => $isLate,
-                    'late_minutes' => $lateMinutes,
-                    'submitted_at' => $status === ActivityStatus::COMPLETED ? now() : null,
+                    'is_late' => false,
+                    'late_minutes' => 0,
+                    'submitted_at' => now(),
                     'device_id' => $validated['device_id'] ?? null,
                 ]);
-            }
 
-            // Create checklist items
-            foreach ($validated['items'] as $item) {
-                ActivityItem::create([
-                    'cleaning_activity_id' => $activity->id,
-                    'area_object_id' => $item['area_object_id'],
-                    'is_checked' => $item['is_checked'],
-                    'checked_at' => $item['is_checked'] ? now() : null,
-                ]);
+                // Create checklist items
+                foreach ($validated['items'] as $item) {
+                    $isChecked = $item['is_checked'] ?? false;
+                    ActivityItem::create([
+                        'cleaning_activity_id' => $activity->id,
+                        'area_object_id' => $item['area_object_id'],
+                        'is_checked' => $isChecked,
+                        'checked_at' => $isChecked ? now() : null,
+                    ]);
+                }
             }
 
             $activity->load(['area', 'shift', 'items.areaObject.cleaningObject', 'photos']);

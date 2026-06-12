@@ -181,33 +181,13 @@ class MasterDataController extends Controller
     {
         $area->load(['areaObjects.cleaningObject', 'schedules.shift']);
 
-        // Find active shift based on current time (supports shifts crossing midnight)
-        $currentTime = now()->format('H:i:s');
-        $currentShift = \App\Models\Shift::active()
-            ->where(function ($query) use ($currentTime) {
-                $query->where(function ($q) use ($currentTime) {
-                    $q->whereRaw('start_time <= end_time')
-                        ->where('start_time', '<=', $currentTime)
-                        ->where('end_time', '>', $currentTime);
-                })->orWhere(function ($q) use ($currentTime) {
-                    $q->whereRaw('start_time > end_time')
-                        ->where(function ($sub) use ($currentTime) {
-                            $sub->where('start_time', '<=', $currentTime)
-                                ->orWhere('end_time', '>', $currentTime);
-                        });
-                });
-            })
-            ->first();
-
         $user = auth()->user();
-        $inProgressActivity = null;
-        if ($currentShift && $user) {
-            $inProgressActivity = \App\Models\CleaningActivity::with('items')
+        $existingActivity = null;
+        if ($user) {
+            $existingActivity = \App\Models\CleaningActivity::with('items')
                 ->where('user_id', $user->id)
                 ->where('area_id', $area->id)
-                ->where('shift_id', $currentShift->id)
                 ->whereDate('date', today())
-                ->where('status', \App\Enums\ActivityStatus::IN_PROGRESS)
                 ->first();
         }
 
@@ -219,16 +199,20 @@ class MasterDataController extends Controller
                     'name' => $area->name,
                     'category' => $area->category,
                 ],
-                'checklist' => $area->areaObjects->groupBy('room_name')->map(function ($items, $roomName) use ($inProgressActivity) {
+                'checklist' => $area->areaObjects->groupBy('room_name')->map(function ($items, $roomName) use ($existingActivity) {
                     return [
                         'room_name' => $roomName ?: 'Umum',
-                        'items' => $items->map(function ($ao) use ($inProgressActivity) {
+                        'items' => $items->map(function ($ao) use ($existingActivity) {
                             $isChecked = false;
-                            if ($inProgressActivity) {
-                                $isChecked = $inProgressActivity->items
+                            $checkedAt = null;
+                            if ($existingActivity) {
+                                $existingItem = $existingActivity->items
                                     ->where('area_object_id', $ao->id)
-                                    ->where('is_checked', true)
-                                    ->isNotEmpty();
+                                    ->first();
+                                if ($existingItem && $existingItem->is_checked) {
+                                    $isChecked = true;
+                                    $checkedAt = $existingItem->checked_at?->toIso8601String();
+                                }
                             }
                             return [
                                 'id' => $ao->id,
@@ -238,6 +222,7 @@ class MasterDataController extends Controller
                                 'is_required' => $ao->is_required,
                                 'sort_order' => $ao->sort_order,
                                 'is_checked' => $isChecked,
+                                'checked_at' => $checkedAt,
                             ];
                         })->values(),
                     ];
@@ -249,14 +234,15 @@ class MasterDataController extends Controller
                     'time' => $s->scheduled_time,
                     'tolerance' => $s->tolerance_minutes,
                 ]),
-                'draft' => $inProgressActivity ? [
-                    'id' => $inProgressActivity->id,
-                    'notes' => $inProgressActivity->notes,
-                    'start_time' => \Carbon\Carbon::parse($inProgressActivity->start_time)->format('H:i'),
+                'existing_activity' => $existingActivity ? [
+                    'id' => $existingActivity->id,
+                    'notes' => $existingActivity->notes,
+                    'start_time' => \Carbon\Carbon::parse($existingActivity->start_time)->format('H:i'),
                 ] : null,
             ],
         ]);
     }
+
 
     // ========== CLEANING OBJECTS ==========
     public function cleaningObjects(): JsonResponse

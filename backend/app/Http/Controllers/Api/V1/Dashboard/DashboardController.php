@@ -32,10 +32,9 @@ class DashboardController extends Controller
 
         $todayTotal = $schedules->count();
 
-        // Count how many activities are completed today by this user
+        // Count how many activities are saved today by this user (all are COMPLETED in new flow)
         $todayCompleted = CleaningActivity::where('user_id', $user->id)
             ->where('date', $todayStr)
-            ->where('status', ActivityStatus::COMPLETED)
             ->count();
 
         if ($todayTotal === 0) {
@@ -46,23 +45,17 @@ class DashboardController extends Controller
         // Ensure total tasks is at least the number of completed tasks today
         $todayTotal = max($todayTotal, $todayCompleted);
 
-        // Count how many activities are still in progress today (started but not completed)
-        $todayPending = CleaningActivity::where('user_id', $user->id)
-            ->where('date', $todayStr)
-            ->where('status', ActivityStatus::IN_PROGRESS)
-            ->count();
-
         return response()->json([
             'data' => [
                 'today_total' => $todayTotal,
                 'today_completed' => $todayCompleted,
-                'today_pending' => $todayPending,
                 'pending_sync' => CleaningActivity::where('user_id', $user->id)
                     ->where('sync_status', 'pending')->count(),
                 'assigned_areas' => $assignedAreaIds->count(),
             ],
         ]);
     }
+
 
     // Supervisor command center
     public function supervisor(Request $request): JsonResponse
