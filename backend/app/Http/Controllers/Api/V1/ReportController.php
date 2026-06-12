@@ -66,7 +66,7 @@ class ReportController extends Controller
                     $act->start_time ?? '-',
                     $act->end_time ?? '-',
                     $duration,
-                    $act->status,
+                    $act->status?->label() ?? '-',
                     $act->is_late ? 'Ya' : 'Tidak',
                     $act->notes ?? ''
                 ]);
