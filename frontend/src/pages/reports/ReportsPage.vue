@@ -115,6 +115,100 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
     loading.value[type] = false
   }
 }
+
+// Daily Checklist variables & functions
+const selectedDailyDate = ref(new Date().toISOString().split('T')[0])
+const showDailyModal = ref(false)
+const dailyActivities = ref<any[]>([])
+const loadingDaily = ref(false)
+const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+async function fetchDailyChecklist() {
+  if (!areaId.value) {
+    showToast('Pilih area terlebih dahulu untuk melihat pratinjau.', 'error')
+    return
+  }
+  loadingDaily.value = true
+  try {
+    const { data } = await api.get('/api/v1/activities', {
+      params: {
+        date: selectedDailyDate.value,
+        area_id: areaId.value
+      }
+    })
+    dailyActivities.value = data.data || []
+    showDailyModal.value = true
+  } catch (e: any) {
+    showToast('Gagal memuat data ceklist: ' + e.message, 'error')
+  } finally {
+    loadingDaily.value = false
+  }
+}
+
+function printDailyReport() {
+  window.print()
+}
+
+function formatIndoDate(dateStr: string): string {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function getStatusLabel(status: any): string {
+  if (typeof status === 'object' && status !== null) {
+    return status.label || '-'
+  }
+  const labels: Record<string, string> = {
+    'pending': 'Pending',
+    'in_progress': 'Sedang Dikerjakan',
+    'completed': 'Selesai',
+    'verified': 'Terverifikasi',
+    'rejected': 'Ditolak'
+  }
+  return labels[status] || status || '-'
+}
+
+function getStatusBadgeClass(status: any): string {
+  const s = (typeof status === 'object' && status !== null) ? status.value : status
+  switch (s) {
+    case 'completed': return 'badge-success'
+    case 'in_progress': return 'badge-info'
+    case 'pending': return 'badge-warning'
+    default: return 'badge-secondary'
+  }
+}
+
+function formatTimeOnly(dateTimeStr: string): string {
+  if (!dateTimeStr) return '-'
+  try {
+    const date = new Date(dateTimeStr)
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  } catch (e) {
+    return dateTimeStr
+  }
+}
+
+function getPhotosByType(photos: any[], type: 'before' | 'after') {
+  if (!photos) return []
+  return photos.filter(p => p.type === type)
+}
+
+function calculateDuration(start: string, end: string): number | string {
+  if (!start || !end) return '-'
+  try {
+    const [sh, sm] = start.split(':').map(Number)
+    const [eh, em] = end.split(':').map(Number)
+    const startDate = new Date()
+    startDate.setHours(sh, sm, 0)
+    const endDate = new Date()
+    endDate.setHours(eh, em, 0)
+    const diff = (endDate.getTime() - startDate.getTime()) / 1000 / 60
+    return diff >= 0 ? diff : diff + 1440
+  } catch (e) {
+    return '-'
+  }
+}
 </script>
 
 <template>
@@ -169,7 +263,7 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
         </div>
 
         <div class="form-group filter-field">
-          <label class="label">Pilih Ruangan/Area <span class="label-hint">(Khusus Matrix)</span></label>
+          <label class="label">Pilih Ruangan/Area <span class="label-hint">(Untuk Excel & Ceklist)</span></label>
           <select v-model="areaId" class="input select-input" :disabled="areas.length === 0">
             <option value="">Pilih Area...</option>
             <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
@@ -234,8 +328,42 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
         </div>
       </div>
 
-      <!-- Matrix Excel Report -->
+      <!-- Daily Checklist Card -->
       <div class="export-card export-card-featured animate-slide-up stagger-3">
+        <div class="export-card-body">
+          <div class="export-header">
+            <span class="export-title export-title-gradient">Ceklist Harian & Foto Bukti</span>
+            <span class="format-badge csv">PRATINJAU & PDF</span>
+          </div>
+          <div class="export-desc">
+            <p>
+              Pratinjau visual tabel ceklist kebersihan ruangan beserta foto bukti sebelum/sesudah per hari, serta cetak langsung atau simpan sebagai dokumen PDF.
+            </p>
+            <div class="form-group mt-4">
+              <label class="label text-xs">Pilih Tanggal Laporan</label>
+              <input type="date" v-model="selectedDailyDate" class="input date-input-full" style="width: 100%;" />
+            </div>
+          </div>
+        </div>
+        <div class="export-card-footer">
+          <div class="matrix-info">
+            <div class="selected-area" v-if="areaId">
+              <span class="download-meta-icon">📍</span>
+              Lokasi terpilih: <b>{{ getSelectedAreaName() }}</b>
+            </div>
+            <div class="area-warning" v-else>
+              ⚠️ Pilih area/lokasi di atas untuk melihat pratinjau.
+            </div>
+          </div>
+          <button class="btn btn-secondary export-btn" @click="fetchDailyChecklist" :disabled="loadingDaily || !areaId">
+            <span v-if="loadingDaily" class="spinner-small"></span>
+            <span>{{ loadingDaily ? 'Memproses...' : 'Lihat Ceklist Harian (Pratinjau)' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Matrix Excel Report -->
+      <div class="export-card export-card-featured animate-slide-up stagger-4">
         <div class="export-card-body">
           <div class="export-header">
             <span class="export-title export-title-gradient">Tabel Ceklist Ruangan (Format RS JEC Orbita)</span>
@@ -270,6 +398,136 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
         </div>
       </div>
     </div>
+
+    <!-- Daily Checklist Preview Modal -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showDailyModal" class="modal-overlay" @click.self="showDailyModal = false">
+          <div class="modal-content modal-xl animate-scale-up">
+            <div class="modal-header">
+              <h3 class="modal-title">📄 Pratinjau Ceklist Harian</h3>
+              <button class="modal-close" @click="showDailyModal = false">✕</button>
+            </div>
+            
+            <div class="modal-body modal-scrollable">
+              <div id="daily-print-area">
+                <div class="print-header-report">
+                  <div class="print-logo">
+                    <span class="logo-bold">JEC</span>
+                    <span class="logo-sub">Rumah Sakit Mata<br>JEC ORBITA @ Makassar</span>
+                  </div>
+                  <div class="print-meta-info">
+                    <h2>LAPORAN CEKLIST HARIAN & FOTO BUKTI</h2>
+                    <table class="meta-print-table">
+                      <tr>
+                        <td>Lokasi / Area</td>
+                        <td>: <b>{{ getSelectedAreaName() }}</b></td>
+                      </tr>
+                      <tr>
+                        <td>Hari / Tanggal</td>
+                        <td>: <b>{{ formatIndoDate(selectedDailyDate) }}</b></td>
+                      </tr>
+                    </table>
+                  </div>
+                </div>
+
+                <div v-if="dailyActivities.length === 0" class="empty-print-state">
+                  <div class="empty-print-icon">📭</div>
+                  <p>Tidak ada aktivitas kebersihan yang tercatat untuk area dan tanggal ini.</p>
+                </div>
+
+                <div v-else v-for="(act, idx) in dailyActivities" :key="act.id" class="activity-print-section">
+                  <div class="activity-print-header">
+                    <div class="activity-print-shift">Shift {{ act.shift?.name || '-' }}</div>
+                    <div class="activity-print-details">
+                      <span>Petugas: <b>{{ act.user?.name || '-' }}</b></span>
+                      <span class="divider">|</span>
+                      <span>Waktu: <b>{{ act.start_time || '-' }} - {{ act.end_time || '-' }}</b> ({{ calculateDuration(act.start_time, act.end_time) }} Menit)</span>
+                      <span class="divider">|</span>
+                      <span>SLA: <b :class="act.is_late ? 'text-late' : 'text-ontime'">{{ act.is_late ? 'Terlambat' : 'Tepat Waktu' }}</b></span>
+                    </div>
+                  </div>
+
+                  <table class="checklist-table-details">
+                    <thead>
+                      <tr>
+                        <th width="40">NO</th>
+                        <th width="200">RUANGAN / BAGIAN</th>
+                        <th>ITEM KEBERSIHAN</th>
+                        <th width="120">STATUS</th>
+                        <th width="120">WAKTU CEK</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(item, itemIdx) in act.items" :key="item.id">
+                        <td>{{ itemIdx + 1 }}</td>
+                        <td class="text-left font-medium">{{ item.area_object?.room_name || 'Umum' }}</td>
+                        <td class="text-left">{{ item.area_object?.cleaning_object?.name || '-' }}</td>
+                        <td class="text-center">
+                          <span :class="item.is_checked ? 'status-clean' : 'status-dirty'">
+                            {{ item.is_checked ? '✓ Bersih' : '✗ Kotor' }}
+                          </span>
+                        </td>
+                        <td class="text-center">{{ item.checked_at ? formatTimeOnly(item.checked_at) : '-' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="activity-print-notes" v-if="act.notes">
+                    <b>Catatan Kendala/Keterangan:</b>
+                    <p>{{ act.notes }}</p>
+                  </div>
+
+                  <div class="activity-print-photos">
+                    <div class="photo-print-column">
+                      <h4>Foto Sebelum Kerja (Before)</h4>
+                      <div class="photo-print-wrapper">
+                        <div v-if="getPhotosByType(act.photos, 'before').length === 0" class="no-photo-text">
+                          Tidak ada foto Before
+                        </div>
+                        <img v-for="photo in getPhotosByType(act.photos, 'before')" :key="photo.id"
+                             :src="`${apiBaseUrl}/storage/${photo.file_path}`" alt="Before" class="photo-print-el" />
+                      </div>
+                    </div>
+                    
+                    <div class="photo-print-column">
+                      <h4>Foto Sesudah Kerja (After)</h4>
+                      <div class="photo-print-wrapper">
+                        <div v-if="getPhotosByType(act.photos, 'after').length === 0" class="no-photo-text">
+                          Tidak ada foto After
+                        </div>
+                        <img v-for="photo in getPhotosByType(act.photos, 'after')" :key="photo.id"
+                             :src="`${apiBaseUrl}/storage/${photo.file_path}`" alt="After" class="photo-print-el" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="print-signatures">
+                    <div class="signature-box">
+                      <p>Petugas Cleaning Service</p>
+                      <div class="signature-line"></div>
+                      <p class="font-bold">{{ act.user?.name || '........................' }}</p>
+                    </div>
+                    <div class="signature-box">
+                      <p>Penanggung Jawab (PJ) Unit</p>
+                      <div class="signature-line"></div>
+                      <p class="font-bold">........................................</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="modal-footer">
+              <button class="btn btn-ghost" @click="showDailyModal = false">Tutup</button>
+              <button v-if="dailyActivities.length > 0" class="btn btn-primary" @click="printDailyReport">
+                🖨️ Cetak Laporan / Simpan PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -415,7 +673,6 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
 }
 
 .export-card-featured {
-  grid-column: 1 / -1;
   border-color: hsl(var(--primary) / 0.2);
   background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--primary) / 0.03));
 }
@@ -536,6 +793,360 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
 /* ===== Spacing ===== */
 .mb-6 { margin-bottom: 1.5rem; }
 
+/* ===== Daily Modal ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.modal-content {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.modal-xl {
+  max-width: 950px;
+  max-height: 90vh;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin: 0;
+}
+
+.modal-close {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted));
+  border-radius: 0.375rem;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-scrollable {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.2);
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-ghost:hover {
+  background: hsl(var(--muted));
+}
+
+/* ===== Print Report Area Stylings ===== */
+.print-header-report {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid hsl(var(--foreground));
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.print-logo {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-bold {
+  font-size: 2rem;
+  font-weight: 900;
+  color: hsl(var(--primary));
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.logo-sub {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  margin-top: 0.25rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 700;
+}
+
+.print-meta-info {
+  text-align: right;
+}
+
+.print-meta-info h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0 0 0.5rem 0;
+  color: hsl(var(--foreground));
+}
+
+.meta-print-table {
+  margin-left: auto;
+  border-collapse: collapse;
+}
+
+.meta-print-table td {
+  border: none !important;
+  padding: 0.125rem 0.25rem;
+  font-size: 0.8125rem;
+  text-align: left;
+}
+
+.empty-print-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.empty-print-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.activity-print-section {
+  margin-bottom: 2.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  background: hsl(var(--card));
+}
+
+.activity-print-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: hsl(var(--primary) / 0.06);
+  border: 1px solid hsl(var(--primary) / 0.12);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.activity-print-shift {
+  font-weight: 800;
+  font-size: 0.875rem;
+  background: hsl(var(--primary));
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  text-transform: uppercase;
+}
+
+.activity-print-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.divider {
+  color: hsl(var(--border));
+}
+
+.text-late {
+  color: hsl(var(--destructive));
+}
+
+.text-ontime {
+  color: hsl(var(--success));
+}
+
+.checklist-table-details {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  font-size: 0.8125rem;
+}
+
+.checklist-table-details th,
+.checklist-table-details td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5rem;
+}
+
+.checklist-table-details th {
+  background: hsl(var(--muted) / 0.5);
+  font-weight: 700;
+  text-align: center;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.status-clean {
+  color: hsl(var(--success));
+  font-weight: 700;
+}
+
+.status-dirty {
+  color: hsl(var(--destructive));
+  font-weight: 700;
+}
+
+.activity-print-notes {
+  background: hsl(var(--muted) / 0.3);
+  border-left: 3px solid hsl(var(--warning));
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.activity-print-notes p {
+  margin: 0.25rem 0 0 0;
+}
+
+.activity-print-photos {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.photo-print-column h4 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.photo-print-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  background: hsl(var(--muted) / 0.2);
+  border: 1px dashed hsl(var(--border));
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  min-height: 120px;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-print-el {
+  max-height: 110px;
+  object-fit: cover;
+  border-radius: 0.25rem;
+  border: 1px solid hsl(var(--border));
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.photo-print-el:hover {
+  transform: scale(1.05);
+}
+
+.no-photo-text {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.print-signatures {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px dashed hsl(var(--border));
+}
+
+.signature-box {
+  width: 45%;
+  text-align: center;
+}
+
+.signature-box p {
+  font-size: 0.75rem;
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+}
+
+.signature-line {
+  height: 50px;
+  margin-bottom: 0.25rem;
+}
+
+.font-bold {
+  font-weight: 700;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Animations */
+.modal-fade-enter-active, .modal-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.modal-fade-enter-from, .modal-fade-leave-to {
+  opacity: 0;
+}
+.modal-fade-enter-active .modal-content {
+  animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-fade-leave-active .modal-content {
+  animation: modalScaleOut 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes modalScaleOut {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.95); opacity: 0; }
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .export-grid {
@@ -546,9 +1157,91 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
     flex-direction: column;
     gap: 1rem;
   }
+}
 
-  .export-card-featured {
-    grid-column: auto;
+/* ===== Printing Media Queries ===== */
+@media print {
+  /* Hide all elements on the parent page */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Make sure background colors print correctly */
+  html, body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Show only the print area and its children */
+  #daily-print-area, #daily-print-area * {
+    visibility: visible;
+  }
+  
+  /* Position print area at top-left */
+  #daily-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white !important;
+    color: black !important;
+  }
+
+  .activity-print-section {
+    page-break-after: always;
+    border: none !important;
+    padding: 0 !important;
+    margin-bottom: 0 !important;
+    background: white !important;
+  }
+
+  .activity-print-section:last-child {
+    page-break-after: avoid;
+  }
+
+  .activity-print-header {
+    background: #f0f0f0 !important;
+    border: 1px solid #ccc !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .activity-print-shift {
+    background: #000 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .checklist-table-details th {
+    background: #eaeaea !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .status-clean {
+    color: #008000 !important;
+  }
+
+  .status-dirty {
+    color: #ff0000 !important;
+  }
+
+  .photo-print-wrapper {
+    background: white !important;
+    border: 1px solid #ddd !important;
+  }
+
+  .photo-print-el {
+    max-height: 160px; /* larger in print */
+  }
+
+  /* Hide print buttons and scroll controls */
+  .modal-overlay, .modal-header, .modal-footer, .btn, button {
+    display: none !important;
   }
 }
 </style>
