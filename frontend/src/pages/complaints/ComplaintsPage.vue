@@ -68,7 +68,6 @@ async function loadData(page = 1) {
         status: filterStatus.value || undefined,
         priority: filterPriority.value || undefined,
         category: filterCategory.value || undefined,
-        area_id: undefined // Add search filter locally on list
       }
     })
     
@@ -281,6 +280,23 @@ function getSLADeadlineString(deadlineStr: string, status: string) {
   }
 }
 
+// Active filter count for badge indicator
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (filterStatus.value) count++
+  if (filterPriority.value) count++
+  if (filterCategory.value) count++
+  return count
+})
+
+function clearAllFilters() {
+  filterStatus.value = ''
+  filterPriority.value = ''
+  filterCategory.value = ''
+  searchQuery.value = ''
+  loadData(1)
+}
+
 onMounted(() => {
   loadData()
   if (authStore.user?.role === 'kepala_ruangan') {
@@ -295,15 +311,20 @@ onMounted(() => {
 <template>
   <div class="complaints-page animate-fade-in">
     <!-- Toast Message -->
-    <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
-      {{ toast.message }}
-    </div>
+    <Teleport to="body">
+      <Transition name="toast-slide">
+        <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
+          <span class="toast-icon">{{ toast.type === 'success' ? '✅' : '❌' }}</span>
+          {{ toast.message }}
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
+    <div class="complaints-header">
       <div>
-        <h1 class="text-2xl font-bold">Komplain & Masalah</h1>
-        <p class="text-muted-foreground">Kelola laporan unit dan komplain kebersihan ruangan.</p>
+        <h1 class="page-title">Komplain & Masalah</h1>
+        <p class="page-subtitle">Kelola laporan unit dan komplain kebersihan ruangan.</p>
       </div>
       <button v-if="authStore.user?.role === 'kepala_ruangan'" class="btn btn-primary" @click="showForm = !showForm">
         {{ showForm ? 'Tutup Form' : '+ Buat Laporan' }}
@@ -311,62 +332,64 @@ onMounted(() => {
     </div>
 
     <!-- Create Complaint Modal Dialog/Card -->
-    <div v-if="showForm" class="card form-card mb-6 animate-slide-up">
-      <h2 class="font-bold mb-4">Laporkan Komplain Baru</h2>
-      <form @submit.prevent="submitComplaint" class="form-grid">
-        <div class="form-group">
-          <label class="label">Area / Lokasi</label>
-          <select v-model="form.area_id" class="input" required>
-            <option value="">Pilih Area...</option>
-            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label class="label">Kategori Komplain</label>
-          <select v-model="form.category" class="input" required>
-            <option value="kebersihan">Kebersihan</option>
-            <option value="kerusakan">Kerusakan Fasilitas</option>
-            <option value="kehabisan_stok">Kehabisan Stok (Sabun/Tisu/Lainnya)</option>
-          </select>
-        </div>
+    <Transition name="form-slide">
+      <div v-if="showForm" class="card form-card mb-6">
+        <h2 class="form-title">Laporkan Komplain Baru</h2>
+        <form @submit.prevent="submitComplaint" class="form-grid">
+          <div class="form-group">
+            <label class="label">Area / Lokasi</label>
+            <select v-model="form.area_id" class="input" required>
+              <option value="">Pilih Area...</option>
+              <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="label">Kategori Komplain</label>
+            <select v-model="form.category" class="input" required>
+              <option value="kebersihan">Kebersihan</option>
+              <option value="kerusakan">Kerusakan Fasilitas</option>
+              <option value="kehabisan_stok">Kehabisan Stok (Sabun/Tisu/Lainnya)</option>
+            </select>
+          </div>
 
-        <div class="form-group">
-          <label class="label">Judul Masalah</label>
-          <input type="text" v-model="form.title" class="input" placeholder="Contoh: Lantai toilet becek dan bau" required />
-        </div>
+          <div class="form-group">
+            <label class="label">Judul Masalah</label>
+            <input type="text" v-model="form.title" class="input" placeholder="Contoh: Lantai toilet becek dan bau" required />
+          </div>
 
-        <div class="form-group">
-          <label class="label">Tingkat Prioritas</label>
-          <select v-model="form.priority" class="input" required>
-            <option value="low">Rendah (SLA 24 jam)</option>
-            <option value="medium">Sedang (SLA 12 jam)</option>
-            <option value="high">Tinggi (SLA 4 jam)</option>
-            <option value="critical">Kritis (SLA 1 jam)</option>
-          </select>
-        </div>
+          <div class="form-group">
+            <label class="label">Tingkat Prioritas</label>
+            <select v-model="form.priority" class="input" required>
+              <option value="low">Rendah (SLA 24 jam)</option>
+              <option value="medium">Sedang (SLA 12 jam)</option>
+              <option value="high">Tinggi (SLA 4 jam)</option>
+              <option value="critical">Kritis (SLA 1 jam)</option>
+            </select>
+          </div>
 
-        <div class="form-group full-width">
-          <label class="label">Deskripsi Lengkap</label>
-          <textarea v-model="form.description" class="input textarea" placeholder="Jelaskan secara detail mengenai masalah kebersihan yang ditemukan..." required></textarea>
-        </div>
+          <div class="form-group full-width">
+            <label class="label">Deskripsi Lengkap</label>
+            <textarea v-model="form.description" class="input textarea" placeholder="Jelaskan secara detail mengenai masalah kebersihan yang ditemukan..." required></textarea>
+          </div>
 
-        <div class="form-group full-width">
-          <label class="label">Lampiran Foto Bukti (Maks 4)</label>
-          <input type="file" multiple accept="image/*" @change="handleFileChange" class="input file-input" />
-          <p class="text-xs text-muted-foreground mt-1" v-if="selectedFiles.length > 0">
-            Terpilih: {{ selectedFiles.length }} file ({{ selectedFiles.map(f => f.name).join(', ') }})
-          </p>
-        </div>
+          <div class="form-group full-width">
+            <label class="label">Lampiran Foto Bukti (Maks 4)</label>
+            <input type="file" multiple accept="image/*" @change="handleFileChange" class="input file-input" />
+            <p class="file-info" v-if="selectedFiles.length > 0">
+              Terpilih: {{ selectedFiles.length }} file ({{ selectedFiles.map(f => f.name).join(', ') }})
+            </p>
+          </div>
 
-        <div class="form-group full-width flex justify-end gap-2 mt-4">
-          <button type="button" class="btn btn-ghost" @click="showForm = false">Batal</button>
-          <button type="submit" class="btn btn-primary" :disabled="saving">
-            {{ saving ? 'Mengirim...' : 'Kirim Laporan' }}
-          </button>
-        </div>
-      </form>
-    </div>
+          <div class="form-actions full-width">
+            <button type="button" class="btn btn-ghost" @click="showForm = false">Batal</button>
+            <button type="submit" class="btn btn-primary" :disabled="saving">
+              {{ saving ? 'Mengirim...' : 'Kirim Laporan' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </Transition>
 
     <!-- Filters & Search Toolbar -->
     <div class="card toolbar-card mb-6 animate-slide-up">
@@ -399,14 +422,24 @@ onMounted(() => {
             <option value="kerusakan">Kerusakan</option>
             <option value="kehabisan_stok">Kehabisan Stok</option>
           </select>
+
+          <button
+            v-if="activeFilterCount > 0"
+            class="btn btn-ghost clear-filter-btn"
+            @click="clearAllFilters"
+            title="Hapus semua filter"
+          >
+            ✕ Reset ({{ activeFilterCount }})
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Complaints Table Card -->
-    <div class="card p-0 overflow-hidden animate-slide-up">
-      <div v-if="loading" class="flex justify-center items-center py-24">
+    <div class="card table-card animate-slide-up">
+      <div v-if="loading" class="loading-container">
         <div class="spinner-large"></div>
+        <p class="loading-text">Memuat data komplain...</p>
       </div>
 
       <div v-else class="table-responsive">
@@ -426,26 +459,26 @@ onMounted(() => {
             <template v-for="c in filteredComplaints" :key="c.id">
               <!-- Regular Table Row -->
               <tr class="clickable-row" :class="{ 'row-active': expandedId === c.id }" @click="toggleDetails(c.id)">
-                <td class="font-mono text-sm font-bold">#{{ c.id }}</td>
+                <td class="cell-id">#{{ c.id }}</td>
                 <td>
-                  <div class="font-medium">{{ c.area?.name || '-' }}</div>
-                  <div class="text-xs text-muted-foreground">{{ c.area?.code || '-' }}</div>
+                  <div class="cell-area-name">{{ c.area?.name || '-' }}</div>
+                  <div class="cell-area-code">{{ c.area?.code || '-' }}</div>
                 </td>
                 <td>
                   <span class="category-badge">{{ getCategoryLabel(c.category) }}</span>
                 </td>
                 <td>
-                  <div class="font-medium text-truncate">{{ c.title }}</div>
-                  <div class="text-xs text-muted-foreground mt-0.5">
+                  <div class="cell-title">{{ c.title }}</div>
+                  <div class="cell-date">
                     {{ new Date(c.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }}
                   </div>
                 </td>
                 <td>
-                  <div class="font-medium">{{ c.reporter?.name || '-' }}</div>
-                  <div class="text-xs text-muted-foreground">{{ c.reporter?.role_label || 'Staf' }}</div>
+                  <div class="cell-reporter">{{ c.reporter?.name || '-' }}</div>
+                  <div class="cell-role">{{ c.reporter?.role_label || 'Staf' }}</div>
                 </td>
                 <td>
-                  <div class="flex flex-wrap gap-1">
+                  <div class="badges-wrapper">
                     <span class="badge" :class="`badge-status-${c.status}`">
                       {{ getStatusLabel(c.status) }}
                     </span>
@@ -454,10 +487,10 @@ onMounted(() => {
                     </span>
                   </div>
                 </td>
-                <td class="font-mono text-xs">
+                <td class="cell-sla">
                   <span :class="{ 
-                    'text-destructive font-bold': !['resolved', 'closed'].includes(c.status) && new Date(c.sla_deadline) < new Date(),
-                    'text-success': ['resolved', 'closed'].includes(c.status)
+                    'sla-late': !['resolved', 'closed'].includes(c.status) && new Date(c.sla_deadline) < new Date(),
+                    'sla-ok': ['resolved', 'closed'].includes(c.status)
                   }">
                     {{ getSLADeadlineString(c.sla_deadline, c.status) }}
                   </span>
@@ -469,7 +502,7 @@ onMounted(() => {
                 <td colspan="7">
                   <div class="details-panel-wrapper">
                     <!-- Loading state for details -->
-                    <div v-if="loadingDetail" class="flex justify-center py-6">
+                    <div v-if="loadingDetail" class="details-loading">
                       <div class="spinner-small"></div>
                     </div>
 
@@ -477,17 +510,25 @@ onMounted(() => {
                     <div v-else-if="expandedData" class="details-panel-grid">
                       <!-- Left Column: Info, Desc, Images -->
                       <div class="details-main">
-                        <div class="mb-4">
+                        <div class="details-section">
                           <h4 class="details-heading">Deskripsi Keluhan</h4>
                           <p class="details-desc">{{ expandedData.description }}</p>
                         </div>
 
                         <!-- Gallery Photos -->
-                        <div class="mb-4" v-if="expandedData.photos && expandedData.photos.length > 0">
+                        <div class="details-section" v-if="expandedData.photos && expandedData.photos.length > 0">
                           <h4 class="details-heading">Lampiran Bukti ({{ expandedData.photos.length }} Foto)</h4>
                           <div class="image-gallery">
-                            <div v-for="photo in expandedData.photos" :key="photo.id" class="gallery-thumbnail cursor-pointer" title="Klik untuk memperbesar" @click="openPreview(`${apiBaseUrl}/storage/${photo.file_path}`, 'Lampiran Bukti')">
+                            <div
+                              v-for="photo in expandedData.photos"
+                              :key="photo.id"
+                              class="gallery-thumbnail"
+                              @click="openPreview(`${apiBaseUrl}/storage/${photo.file_path}`, 'Lampiran Bukti')"
+                            >
                               <img :src="`${apiBaseUrl}/storage/${photo.file_path}`" alt="Lampiran Bukti" />
+                              <div class="gallery-overlay">
+                                <span>🔍</span>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -496,15 +537,15 @@ onMounted(() => {
                         <div class="metadata-box">
                           <div class="meta-item">
                             <span class="meta-lbl">Target Selesai (SLA):</span>
-                            <span class="meta-val font-mono">{{ new Date(expandedData.sla_deadline).toLocaleString('id-ID') }}</span>
+                            <span class="meta-val meta-mono">{{ new Date(expandedData.sla_deadline).toLocaleString('id-ID') }}</span>
                           </div>
                           <div class="meta-item" v-if="expandedData.assignee">
                             <span class="meta-lbl">Penanggung Jawab:</span>
-                            <span class="meta-val font-bold text-primary">{{ expandedData.assignee.name }}</span>
+                            <span class="meta-val meta-primary meta-bold">{{ expandedData.assignee.name }}</span>
                           </div>
                           <div class="meta-item" v-if="expandedData.resolved_at">
                             <span class="meta-lbl">Selesai Pada:</span>
-                            <span class="meta-val text-success">{{ new Date(expandedData.resolved_at).toLocaleString('id-ID') }}</span>
+                            <span class="meta-val meta-success">{{ new Date(expandedData.resolved_at).toLocaleString('id-ID') }}</span>
                           </div>
                         </div>
                       </div>
@@ -513,58 +554,58 @@ onMounted(() => {
                       <div class="details-actions-timeline">
                         <!-- Timeline -->
                         <div class="timeline-box">
-                          <h4 class="details-heading mb-3">Logs & Catatan Tindakan</h4>
+                          <h4 class="details-heading timeline-heading">Logs & Catatan Tindakan</h4>
                           <div class="timeline">
                             <div v-for="update in expandedData.updates" :key="update.id" class="timeline-item">
                               <div class="timeline-badge" :class="`bg-${update.status_to}`"></div>
                               <div class="timeline-content">
-                                <div class="flex justify-between items-center">
-                                  <span class="timeline-user font-bold">{{ update.user?.name }}</span>
+                                <div class="timeline-header">
+                                  <span class="timeline-user">{{ update.user?.name }}</span>
                                   <span class="timeline-time">{{ new Date(update.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }}</span>
                                 </div>
-                                <div class="timeline-status-shift text-xs mt-0.5">
-                                  Status: <span class="font-bold text-primary">{{ getStatusLabel(update.status_to) }}</span>
+                                <div class="timeline-status-shift">
+                                  Status: <span class="timeline-status-val">{{ getStatusLabel(update.status_to) }}</span>
                                 </div>
-                                <p class="timeline-note mt-1" v-if="update.notes">{{ update.notes }}</p>
+                                <p class="timeline-note" v-if="update.notes">{{ update.notes }}</p>
                               </div>
                             </div>
                           </div>
                         </div>
 
                         <!-- Supervisor/Admin actions -->
-                        <div class="action-panel mt-4" v-if="['supervisor', 'administrator'].includes(authStore.user?.role || '')">
-                          <h4 class="details-heading mb-2">Tindakan Lanjutan</h4>
+                        <div class="action-panel" v-if="['supervisor', 'administrator'].includes(authStore.user?.role || '')">
+                          <h4 class="details-heading">Tindakan Lanjutan</h4>
                           
                           <!-- Note text input -->
-                          <div class="form-group mb-3">
+                          <div class="form-group action-form-group">
                             <textarea v-model="updateNotes" class="input textarea mini-textarea" placeholder="Tambahkan catatan progres/penyelesaian di sini..."></textarea>
                           </div>
 
                           <!-- Staff assignment -->
-                          <div class="form-group mb-3">
+                          <div class="form-group action-form-group">
                             <label class="label-sub">Tugaskan ke Staf Pembersihan</label>
-                            <div class="flex gap-2">
-                              <select v-model="assigneeId" class="input select-staff flex-1">
+                            <div class="assign-row">
+                              <select v-model="assigneeId" class="input select-staff">
                                 <option :value="null">Belum Ditugaskan</option>
                                 <option v-for="staff in cleaningStaff" :key="staff.id" :value="staff.id">
                                   {{ staff.name }}
                                 </option>
                               </select>
-                              <button class="btn btn-secondary text-xs" @click="handleAssignStaff" :disabled="saving">
+                              <button class="btn btn-secondary assign-btn" @click="handleAssignStaff" :disabled="saving">
                                 Tugaskan
                               </button>
                             </div>
                           </div>
 
                           <!-- Action buttons -->
-                          <div class="flex gap-2 mt-2">
-                            <button v-if="expandedData.status === 'open'" class="btn btn-primary text-xs flex-1" @click="updateComplaintStatus('in_progress')" :disabled="saving">
+                          <div class="action-buttons">
+                            <button v-if="expandedData.status === 'open'" class="btn btn-primary action-btn" @click="updateComplaintStatus('in_progress')" :disabled="saving">
                               Proses Komplain
                             </button>
-                            <button v-if="expandedData.status === 'in_progress'" class="btn btn-success text-xs flex-1" @click="updateComplaintStatus('resolved')" :disabled="saving">
+                            <button v-if="expandedData.status === 'in_progress'" class="btn btn-success action-btn" @click="updateComplaintStatus('resolved')" :disabled="saving">
                               Tandai Selesai
                             </button>
-                            <button v-if="expandedData.status === 'resolved'" class="btn btn-secondary text-xs flex-1" @click="updateComplaintStatus('closed')" :disabled="saving">
+                            <button v-if="expandedData.status === 'resolved'" class="btn btn-secondary action-btn" @click="updateComplaintStatus('closed')" :disabled="saving">
                               Tutup & Arsipkan
                             </button>
                           </div>
@@ -576,9 +617,17 @@ onMounted(() => {
               </tr>
             </template>
             <tr v-if="filteredComplaints.length === 0">
-              <td colspan="7" class="text-center py-12 text-muted-foreground">
-                <span class="empty-icon-tbl">⚠️</span>
-                <p class="mt-2">Tidak ditemukan data komplain yang cocok.</p>
+              <td colspan="7" class="empty-td">
+                <div class="empty-state">
+                  <span class="empty-icon-tbl">📭</span>
+                  <p class="empty-msg">Tidak ditemukan data komplain yang cocok.</p>
+                  <p class="empty-sub" v-if="activeFilterCount > 0">
+                    Coba hapus filter atau ubah kata pencarian.
+                  </p>
+                  <button v-if="activeFilterCount > 0" class="btn btn-ghost btn-reset-empty" @click="clearAllFilters">
+                    Reset Filter
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -586,57 +635,111 @@ onMounted(() => {
       </div>
 
       <!-- Pagination Footer -->
-      <div class="pagination-footer border-t" v-if="totalPages > 1">
-        <span class="page-info text-sm text-muted-foreground">
+      <div class="pagination-footer" v-if="totalPages > 1">
+        <span class="page-info">
           Halaman <b>{{ currentPage }}</b> dari {{ totalPages }}
         </span>
-        <div class="flex gap-2">
+        <div class="page-buttons">
           <button class="btn btn-secondary btn-pagination" :disabled="currentPage === 1 || loading" @click="loadData(currentPage - 1)">
-            Sebelumnya
+            ← Sebelumnya
           </button>
           <button class="btn btn-secondary btn-pagination" :disabled="currentPage === totalPages || loading" @click="loadData(currentPage + 1)">
-            Selanjutnya
+            Selanjutnya →
           </button>
         </div>
       </div>
     </div>
 
     <!-- Preview Modal -->
-    <div v-if="previewModal.show" class="preview-modal-overlay" @click="closePreview">
-      <div class="preview-modal-content" @click.stop>
-        <button class="preview-close-btn" @click="closePreview">✕</button>
-        <img :src="previewModal.url" :alt="previewModal.title" class="preview-modal-img" />
-        <div class="preview-modal-caption">{{ previewModal.title }}</div>
-      </div>
-    </div>
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="previewModal.show" class="preview-modal-overlay" @click="closePreview">
+          <div class="preview-modal-content" @click.stop>
+            <button class="preview-close-btn" @click="closePreview">✕</button>
+            <img :src="previewModal.url" :alt="previewModal.title" class="preview-modal-img" />
+            <div class="preview-modal-caption">{{ previewModal.title }}</div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
+/* ===== Toast ===== */
 .toast {
   position: fixed;
   top: 1.5rem;
   right: 1.5rem;
-  z-index: 1000;
+  z-index: 99999;
   padding: 0.75rem 1.5rem;
   border-radius: 0.5rem;
   color: white;
   font-weight: 500;
   font-size: 0.875rem;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  animation: slideIn 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 .toast-success { background: hsl(var(--success)); }
 .toast-error { background: hsl(var(--destructive)); }
+
+.toast-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.toast-slide-enter-active {
+  animation: slideIn 0.3s ease;
+}
+.toast-slide-leave-active {
+  animation: slideOut 0.3s ease;
+}
 
 @keyframes slideIn {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
 
+@keyframes slideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+/* ===== Page Header ===== */
+.complaints-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 2rem;
+  color: hsl(var(--foreground));
+  margin: 0;
+}
+
+.page-subtitle {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* ===== Form Card ===== */
 .form-card {
   background: hsl(var(--card) / 0.95);
   border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+.form-title {
+  font-weight: 700;
+  margin-bottom: 1rem;
+  font-size: 1.0625rem;
+  color: hsl(var(--foreground));
 }
 
 .form-grid {
@@ -658,9 +761,34 @@ onMounted(() => {
   font-size: 0.875rem;
 }
 
-/* Toolbar Filters Styling */
+.file-info {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  margin-top: 0.25rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.form-slide-enter-active,
+.form-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.form-slide-enter-from,
+.form-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-12px);
+}
+
+/* ===== Toolbar Filters ===== */
 .toolbar-card {
   background: hsl(var(--card) / 0.8);
+  padding: 1rem 1.25rem;
 }
 
 .toolbar-grid {
@@ -692,13 +820,31 @@ onMounted(() => {
 .filters-group {
   display: flex;
   gap: 0.75rem;
+  align-items: center;
 }
 
 .select-filter {
   min-width: 130px;
 }
 
-/* Table Clickable Row Styling */
+.clear-filter-btn {
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  color: hsl(var(--destructive));
+  white-space: nowrap;
+}
+
+/* ===== Table ===== */
+.table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+/* Clickable Row */
 .clickable-row {
   cursor: pointer;
   transition: background-color 0.2s;
@@ -713,11 +859,64 @@ onMounted(() => {
   border-left: 3px solid hsl(var(--primary));
 }
 
-.text-truncate {
+/* Cell styles */
+.cell-id {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.cell-area-name {
+  font-weight: 500;
+}
+
+.cell-area-code {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.cell-title {
+  font-weight: 500;
   max-width: 250px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.cell-date {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  margin-top: 0.125rem;
+}
+
+.cell-reporter {
+  font-weight: 500;
+}
+
+.cell-role {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.cell-sla {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.sla-late {
+  color: hsl(var(--destructive));
+  font-weight: 700;
+}
+
+.sla-ok {
+  color: hsl(var(--success));
+}
+
+/* Badges */
+.badges-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 
 /* Category badge */
@@ -742,12 +941,61 @@ onMounted(() => {
 .badge-priority-high { background: hsl(38, 70%, 15%); color: hsl(38, 70%, 60%); }
 .badge-priority-critical { background: hsl(0, 70%, 15%); color: hsl(0, 70%, 65%); }
 
-/* Expanded details panel */
+/* ===== Loading ===== */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 0;
+  gap: 1rem;
+}
+
+.loading-text {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.spinner-large {
+  width: 3rem;
+  height: 3rem;
+  border: 4px solid rgba(255,255,255,0.1);
+  border-top-color: hsl(var(--primary));
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-small {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: hsl(var(--primary));
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== Expanded details panel ===== */
 .details-row {
   background-color: hsl(var(--card) / 0.6) !important;
 }
 
 .details-panel-wrapper {
+  padding: 1.5rem;
+}
+
+.details-loading {
+  display: flex;
+  justify-content: center;
   padding: 1.5rem;
 }
 
@@ -760,6 +1008,11 @@ onMounted(() => {
 .details-main {
   display: flex;
   flex-direction: column;
+  gap: 1rem;
+}
+
+.details-section {
+  margin-bottom: 0;
 }
 
 .details-heading {
@@ -793,6 +1046,8 @@ onMounted(() => {
   border: 1px solid hsl(var(--border));
   transition: transform 0.2s;
   display: block;
+  position: relative;
+  cursor: pointer;
 }
 
 .gallery-thumbnail img {
@@ -803,6 +1058,22 @@ onMounted(() => {
 
 .gallery-thumbnail:hover {
   transform: scale(1.05);
+}
+
+.gallery-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-size: 1.5rem;
+}
+
+.gallery-thumbnail:hover .gallery-overlay {
+  opacity: 1;
 }
 
 /* Metadata box */
@@ -831,11 +1102,31 @@ onMounted(() => {
   font-weight: 500;
 }
 
+.meta-mono {
+  font-family: var(--font-mono);
+}
+
+.meta-primary {
+  color: hsl(var(--primary));
+}
+
+.meta-bold {
+  font-weight: 700;
+}
+
+.meta-success {
+  color: hsl(var(--success));
+}
+
 /* Timeline updates box */
 .timeline-box {
   max-height: 250px;
   overflow-y: auto;
   padding-right: 0.5rem;
+}
+
+.timeline-heading {
+  margin-bottom: 0.75rem;
 }
 
 .timeline {
@@ -875,8 +1166,15 @@ onMounted(() => {
   padding: 0.5rem 0.75rem;
 }
 
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .timeline-user {
   font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .timeline-time {
@@ -884,9 +1182,21 @@ onMounted(() => {
   color: hsl(var(--muted-foreground));
 }
 
+.timeline-status-shift {
+  font-size: 0.75rem;
+  margin-top: 0.125rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.timeline-status-val {
+  font-weight: 700;
+  color: hsl(var(--primary));
+}
+
 .timeline-note {
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
+  margin-top: 0.25rem;
 }
 
 /* Actions Form styling */
@@ -895,6 +1205,11 @@ onMounted(() => {
   border: 1px solid hsl(var(--border) / 0.5);
   border-radius: 0.5rem;
   padding: 0.75rem;
+  margin-top: 1rem;
+}
+
+.action-form-group {
+  margin-bottom: 0.75rem;
 }
 
 .label-sub {
@@ -910,18 +1225,87 @@ onMounted(() => {
   font-size: 0.75rem;
 }
 
+.assign-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .select-staff {
   font-size: 0.75rem;
   height: 2.25rem;
+  flex: 1;
 }
 
-/* Pagination Footer */
+.assign-btn {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.action-btn {
+  font-size: 0.8125rem;
+  flex: 1;
+}
+
+/* ===== Empty State ===== */
+.empty-td {
+  padding: 0 !important;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  gap: 0.5rem;
+}
+
+.empty-icon-tbl {
+  font-size: 2.5rem;
+}
+
+.empty-msg {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+
+.empty-sub {
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.7;
+}
+
+.btn-reset-empty {
+  font-size: 0.8125rem;
+  margin-top: 0.5rem;
+  color: hsl(var(--primary));
+}
+
+/* ===== Pagination Footer ===== */
 .pagination-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1.5rem;
   background: hsl(var(--card));
+  border-top: 1px solid hsl(var(--border));
+}
+
+.page-info {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.page-buttons {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .btn-pagination {
@@ -929,44 +1313,17 @@ onMounted(() => {
   font-size: 0.75rem;
 }
 
-.empty-icon-tbl {
-  font-size: 2rem;
-  display: block;
-}
-
-/* Responsiveness */
-@media (max-width: 1024px) {
-  .details-panel-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-}
-
-@media (max-width: 768px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-  .toolbar-grid {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .filters-group {
-    flex-direction: column;
-  }
-}
-
-/* Preview Modal Lightbox */
+/* ===== Preview Modal ===== */
 .preview-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(8px);
-  z-index: 9999;
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  animation: fadeIn 0.2s ease-out;
 }
 
 .preview-modal-content {
@@ -980,7 +1337,6 @@ onMounted(() => {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  animation: zoomIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .preview-modal-img {
@@ -1024,13 +1380,75 @@ onMounted(() => {
   transform: scale(1.1);
 }
 
+.modal-fade-enter-active {
+  animation: fadeIn 0.2s ease-out;
+}
+.modal-fade-enter-active .preview-modal-content {
+  animation: zoomIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.modal-fade-leave-active {
+  animation: fadeOut 0.2s ease-in;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 @keyframes zoomIn {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+/* ===== Spacing ===== */
+.mb-6 { margin-bottom: 1.5rem; }
+
+/* ===== Responsiveness ===== */
+@media (max-width: 1024px) {
+  .details-panel-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .complaints-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar-grid {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filters-group {
+    flex-direction: column;
+  }
+
+  .select-filter {
+    min-width: unset;
+  }
+
+  .page-buttons {
+    flex-direction: column;
+  }
+
+  .pagination-footer {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+    text-align: center;
+  }
 }
 </style>

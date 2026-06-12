@@ -21,6 +21,7 @@ class ComplaintController extends Controller
             ->when($request->status, fn($q, $v) => $q->where('status', $v))
             ->when($request->area_id, fn($q, $v) => $q->where('area_id', $v))
             ->when($request->priority, fn($q, $v) => $q->where('priority', $v))
+            ->when($request->category, fn($q, $v) => $q->where('category', $v))
             ->latest();
 
         return response()->json($query->paginate($request->get('per_page', 20)));

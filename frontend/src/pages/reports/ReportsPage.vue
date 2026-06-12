@@ -4,7 +4,7 @@ import api from '../../lib/axios'
 
 const month = ref(new Date().getMonth() + 1)
 const year = ref(new Date().getFullYear())
-const areaId = ref<string>('')
+const areaId = ref<number | string>('')
 const areas = ref<any[]>([])
 
 const loading = ref({
@@ -13,6 +13,9 @@ const loading = ref({
   'matrix-excel': false
 })
 
+// Track last download timestamp
+const lastDownload = ref<Record<string, string>>({})
+
 const toast = ref<{ show: boolean; message: string; type: string }>({ show: false, message: '', type: 'success' })
 
 function showToast(message: string, type = 'success') {
@@ -20,6 +23,16 @@ function showToast(message: string, type = 'success') {
   setTimeout(() => {
     toast.value.show = false
   }, 4000)
+}
+
+const monthNames: Record<number, string> = {
+  1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+  5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+  9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+}
+
+function getPeriodLabel() {
+  return `${monthNames[month.value] || ''} ${year.value}`
 }
 
 async function fetchAreas() {
@@ -37,6 +50,13 @@ async function fetchAreas() {
 onMounted(() => {
   fetchAreas()
 })
+
+function getSelectedAreaName(): string {
+  if (!areaId.value) return ''
+  // Use == for loose comparison since areaId may be string or number
+  const found = areas.value.find(a => a.id == areaId.value)
+  return found?.name || 'Unknown'
+}
 
 async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
   loading.value[type] = true
@@ -84,6 +104,9 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
     link.remove()
     window.URL.revokeObjectURL(url)
     
+    // Record last download timestamp
+    lastDownload.value[type] = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    
     showToast(`Berhasil mengunduh laporan ${type === 'matrix-excel' ? 'Excel Matrix' : 'CSV'}!`, 'success')
   } catch (e: any) {
     console.error(e)
@@ -97,24 +120,29 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
 <template>
   <div class="reports-page animate-fade-in">
     <!-- Toast notification -->
-    <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
-      {{ toast.message }}
-    </div>
+    <Teleport to="body">
+      <Transition name="toast-slide">
+        <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
+          <span class="toast-icon">{{ toast.type === 'success' ? '✅' : '❌' }}</span>
+          {{ toast.message }}
+        </div>
+      </Transition>
+    </Teleport>
 
-    <div class="flex justify-between items-center mb-6">
+    <div class="reports-header">
       <div>
-        <h1 class="text-2xl font-bold">Laporan & Ekspor</h1>
-        <p class="text-muted-foreground">Unduh file laporan berkala aktivitas kebersihan, audit, dan matrix ruangan.</p>
+        <h1 class="page-title">Laporan & Ekspor</h1>
+        <p class="page-subtitle">Unduh file laporan berkala aktivitas kebersihan, audit, dan matrix ruangan.</p>
       </div>
     </div>
 
     <!-- Filter Periode Card -->
     <div class="card filter-card mb-6 animate-slide-up">
-      <h2 class="font-bold mb-4 flex items-center gap-2">
+      <h2 class="filter-title">
         <span>📅</span> Pilih Periode Laporan
       </h2>
       <div class="filter-row">
-        <div class="form-group flex-1">
+        <div class="form-group filter-field">
           <label class="label">Bulan</label>
           <select v-model="month" class="input select-input">
             <option :value="1">Januari</option>
@@ -132,7 +160,7 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
           </select>
         </div>
         
-        <div class="form-group flex-1">
+        <div class="form-group filter-field">
           <label class="label">Tahun</label>
           <select v-model="year" class="input select-input">
             <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
@@ -140,79 +168,102 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
           </select>
         </div>
 
-        <div class="form-group flex-1">
-          <label class="label">Pilih Ruangan/Area <span class="text-xs text-muted-foreground">(Khusus Matrix)</span></label>
+        <div class="form-group filter-field">
+          <label class="label">Pilih Ruangan/Area <span class="label-hint">(Khusus Matrix)</span></label>
           <select v-model="areaId" class="input select-input" :disabled="areas.length === 0">
             <option value="">Pilih Area...</option>
             <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
           </select>
         </div>
       </div>
+      <div class="period-indicator" v-if="month && year">
+        <span class="period-indicator-icon">📋</span>
+        <span>Periode aktif: <b>{{ getPeriodLabel() }}</b></span>
+      </div>
     </div>
 
     <!-- Export Grid Layout -->
     <div class="export-grid">
       <!-- Monthly CSV Report -->
-      <div class="card-stat animate-slide-up stagger-1 flex flex-col justify-between">
-        <div>
-          <div class="stat-header">
-            <span class="stat-title-custom">Aktivitas Pembersihan</span>
+      <div class="export-card animate-slide-up stagger-1">
+        <div class="export-card-body">
+          <div class="export-header">
+            <span class="export-title">Aktivitas Pembersihan</span>
             <span class="format-badge csv">CSV</span>
           </div>
-          <div class="desc-box">
-            <p class="text-sm text-muted-foreground mt-3">
+          <div class="export-desc">
+            <p>
               Mengekspor log lengkap seluruh pembersihan harian, jam mulai/selesai, pencapaian SLA tepat waktu, durasi pengerjaan, nama petugas, serta catatan kendala operasional lapangan.
             </p>
           </div>
         </div>
-        <button class="btn btn-primary w-full mt-6 flex items-center justify-center gap-2" @click="downloadReport('monthly')" :disabled="loading.monthly">
-          <span v-if="loading.monthly" class="spinner-small"></span>
-          <span>{{ loading.monthly ? 'Memproses...' : 'Unduh Laporan Aktivitas (.csv)' }}</span>
-        </button>
+        <div class="export-card-footer">
+          <div class="download-meta" v-if="lastDownload.monthly">
+            <span class="download-meta-icon">✓</span>
+            Terakhir diunduh: {{ lastDownload.monthly }}
+          </div>
+          <button class="btn btn-primary export-btn" @click="downloadReport('monthly')" :disabled="loading.monthly">
+            <span v-if="loading.monthly" class="spinner-small"></span>
+            <span>{{ loading.monthly ? 'Memproses...' : 'Unduh Laporan Aktivitas (.csv)' }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Audit CSV Report -->
-      <div class="card-stat animate-slide-up stagger-2 flex flex-col justify-between">
-        <div>
-          <div class="stat-header">
-            <span class="stat-title-custom">Rekap Audit & Kepatuhan</span>
+      <div class="export-card animate-slide-up stagger-2">
+        <div class="export-card-body">
+          <div class="export-header">
+            <span class="export-title">Rekap Audit & Kepatuhan</span>
             <span class="format-badge csv">CSV</span>
           </div>
-          <div class="desc-box">
-            <p class="text-sm text-muted-foreground mt-3">
+          <div class="export-desc">
+            <p>
               Mengekspor rekapitulasi data audit berkala oleh supervisor, rata-rata skor kebersihan/kerapihan/SOP, rincian status lulus/gagal, serta deskripsi catatan temuan inspeksi.
             </p>
           </div>
         </div>
-        <button class="btn btn-primary w-full mt-6 flex items-center justify-center gap-2" @click="downloadReport('audit')" :disabled="loading.audit">
-          <span v-if="loading.audit" class="spinner-small"></span>
-          <span>{{ loading.audit ? 'Memproses...' : 'Unduh Laporan Audit (.csv)' }}</span>
-        </button>
+        <div class="export-card-footer">
+          <div class="download-meta" v-if="lastDownload.audit">
+            <span class="download-meta-icon">✓</span>
+            Terakhir diunduh: {{ lastDownload.audit }}
+          </div>
+          <button class="btn btn-primary export-btn" @click="downloadReport('audit')" :disabled="loading.audit">
+            <span v-if="loading.audit" class="spinner-small"></span>
+            <span>{{ loading.audit ? 'Memproses...' : 'Unduh Laporan Audit (.csv)' }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Matrix Excel Report -->
-      <div class="card-stat animate-slide-up stagger-3 flex flex-col justify-between full-width">
-        <div>
-          <div class="stat-header">
-            <span class="stat-title-custom text-primary-gradient">Tabel Ceklist Ruangan (Format RS JEC Orbita)</span>
+      <div class="export-card export-card-featured animate-slide-up stagger-3">
+        <div class="export-card-body">
+          <div class="export-header">
+            <span class="export-title export-title-gradient">Tabel Ceklist Ruangan (Format RS JEC Orbita)</span>
             <span class="format-badge xls">EXCEL</span>
           </div>
-          <div class="desc-box">
-            <p class="text-sm text-muted-foreground mt-2">
+          <div class="export-desc">
+            <p>
               Mengekspor matriks visual tanda ceklist (v) per item kebersihan, per shift aktif harian (1 & 2), lengkap dengan nama ruangan, tanda tangan paraf petugas/PJ, dan penanggung jawab unit sesuai format cetak fisik RS JEC Orbita.
             </p>
           </div>
         </div>
         
-        <div class="flex items-center gap-4 mt-6">
-          <div class="flex-1 text-xs text-muted-foreground" v-if="areaId">
-            Lokasi terpilih: <b>{{ areas.find(a => a.id === areaId)?.name || 'Unknown' }}</b>
-          </div>
-          <div class="flex-1 text-xs text-destructive font-bold" v-else>
-            ⚠️ Pilih area/lokasi di atas untuk mengaktifkan unduhan.
+        <div class="export-card-footer">
+          <div class="matrix-info">
+            <div class="selected-area" v-if="areaId">
+              <span class="download-meta-icon">📍</span>
+              Lokasi terpilih: <b>{{ getSelectedAreaName() }}</b>
+            </div>
+            <div class="area-warning" v-else>
+              ⚠️ Pilih area/lokasi di atas untuk mengaktifkan unduhan.
+            </div>
+            <div class="download-meta" v-if="lastDownload['matrix-excel']">
+              <span class="download-meta-icon">✓</span>
+              Terakhir diunduh: {{ lastDownload['matrix-excel'] }}
+            </div>
           </div>
           
-          <button class="btn btn-primary btn-xls-action" @click="downloadReport('matrix-excel')" :disabled="loading['matrix-excel'] || !areaId">
+          <button class="btn btn-primary export-btn" @click="downloadReport('matrix-excel')" :disabled="loading['matrix-excel'] || !areaId">
             <span v-if="loading['matrix-excel']" class="spinner-small"></span>
             <span>{{ loading['matrix-excel'] ? 'Memproses...' : 'Unduh Matrix Excel (.xls)' }}</span>
           </button>
@@ -223,32 +274,83 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
 </template>
 
 <style scoped>
-/* Toast Notification */
+/* ===== Toast ===== */
 .toast {
   position: fixed;
   top: 1.5rem;
   right: 1.5rem;
-  z-index: 1000;
+  z-index: 99999;
   padding: 0.75rem 1.5rem;
   border-radius: 0.5rem;
   color: white;
   font-weight: 500;
   font-size: 0.875rem;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  animation: slideIn 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 .toast-success { background: hsl(var(--success)); }
 .toast-error { background: hsl(var(--destructive)); }
+
+.toast-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.toast-slide-enter-active {
+  animation: slideIn 0.3s ease;
+}
+.toast-slide-leave-active {
+  animation: slideOut 0.3s ease;
+}
 
 @keyframes slideIn {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
 
-/* Filter Card Layout */
+@keyframes slideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+/* ===== Page Header ===== */
+.reports-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 2rem;
+  color: hsl(var(--foreground));
+  margin: 0;
+}
+
+.page-subtitle {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* ===== Filter Card ===== */
 .filter-card {
   background: hsl(var(--card) / 0.95);
   border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+.filter-title {
+  font-weight: 700;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  color: hsl(var(--foreground));
 }
 
 .filter-row {
@@ -256,18 +358,48 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
   gap: 1.5rem;
 }
 
+.filter-field {
+  flex: 1;
+}
+
 .select-input {
   width: 100%;
 }
 
-/* Export Grid Styling */
+.label-hint {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 400;
+}
+
+.period-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: hsl(var(--primary) / 0.06);
+  border: 1px solid hsl(var(--primary) / 0.15);
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.period-indicator-icon {
+  font-size: 0.875rem;
+}
+
+/* ===== Export Grid ===== */
 .export-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
 }
 
-.card-stat {
+.export-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   padding: 1.5rem;
   border-radius: 1rem;
   background: hsl(var(--card));
@@ -276,29 +408,36 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
   transition: all 0.3s ease;
 }
 
-.card-stat:hover {
+.export-card:hover {
   transform: translateY(-2px);
   border-color: hsl(var(--primary) / 0.4);
   box-shadow: 0 8px 30px rgba(0,0,0,0.2);
 }
 
-.full-width {
+.export-card-featured {
   grid-column: 1 / -1;
+  border-color: hsl(var(--primary) / 0.2);
+  background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--primary) / 0.03));
 }
 
-.stat-header {
+.export-card-body {
+  flex: 1;
+}
+
+.export-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 0.75rem;
 }
 
-.stat-title-custom {
+.export-title {
   font-size: 1.125rem;
   font-weight: 700;
   color: hsl(var(--foreground));
 }
 
-.text-primary-gradient {
+.export-title-gradient {
   background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -311,6 +450,7 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
   padding: 0.1875rem 0.5rem;
   border-radius: 9999px;
   letter-spacing: 0.05em;
+  flex-shrink: 0;
 }
 
 .format-badge.csv {
@@ -325,23 +465,59 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
   border: 1px solid hsl(142, 70%, 30%);
 }
 
-.desc-box {
-  min-height: 80px;
+.export-desc {
+  min-height: 60px;
 }
 
-.btn-xls-action {
-  min-width: 240px;
+.export-desc p {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.5;
 }
 
-/* Utils */
-.w-full { width: 100%; }
-.mt-6 { margin-top: 1.5rem; }
-.mt-3 { margin-top: 0.75rem; }
-.mt-2 { margin-top: 0.5rem; }
-.gap-2 { gap: 0.5rem; }
-.gap-4 { gap: 1rem; }
-.flex-1 { flex: 1; }
+.export-card-footer {
+  margin-top: 1.5rem;
+}
 
+.export-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* ===== Download Meta ===== */
+.download-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: hsl(var(--success));
+  margin-bottom: 0.5rem;
+}
+
+.download-meta-icon {
+  font-size: 0.8rem;
+}
+
+.matrix-info {
+  margin-bottom: 0.75rem;
+}
+
+.selected-area {
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.375rem;
+}
+
+.area-warning {
+  font-size: 0.8125rem;
+  color: hsl(var(--destructive));
+  font-weight: 700;
+}
+
+/* ===== Spinner ===== */
 .spinner-small {
   width: 1rem;
   height: 1rem;
@@ -350,28 +526,29 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* Responsive */
+/* ===== Spacing ===== */
+.mb-6 { margin-bottom: 1.5rem; }
+
+/* ===== Responsive ===== */
 @media (max-width: 768px) {
   .export-grid {
     grid-template-columns: 1fr;
   }
+
   .filter-row {
     flex-direction: column;
     gap: 1rem;
   }
-  .flex.items-center.gap-4 {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .btn-xls-action {
-    width: 100%;
-    min-width: unset;
+
+  .export-card-featured {
+    grid-column: auto;
   }
 }
 </style>
