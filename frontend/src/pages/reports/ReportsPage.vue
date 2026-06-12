@@ -149,6 +149,138 @@ function printDailyReport() {
   window.print()
 }
 
+function exportDailyToExcel() {
+  if (dailyActivities.value.length === 0) return
+  
+  const areaName = getSelectedAreaName()
+  const formattedDate = selectedDailyDate.value
+  const formattedIndoDateStr = formatIndoDate(formattedDate)
+  
+  let html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; }
+        th, td { border: 1px solid black; padding: 5px; text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+        .header-title { font-size: 14px; border: none; text-align: center; font-weight: bold; }
+        .header-meta { border: none; text-align: left; font-weight: bold; }
+        .shift-header { background-color: #d9e1f2; font-weight: bold; text-align: left; }
+      </style>
+    </head>
+    <body>
+      <table>
+        <tr>
+          <td colspan="5" class="header-title">LAPORAN CEKLIST KEBERSIHAN HARIAN - RS JEC ORBITA MAKASSAR</td>
+        </tr>
+        <tr>
+          <td colspan="5" class="header-meta">LOKASI : \${areaName.toUpperCase()}</td>
+        </tr>
+        <tr>
+          <td colspan="5" class="header-meta">TANGGAL : \${formattedIndoDateStr.toUpperCase()}</td>
+        </tr>
+        <tr>
+          <td colspan="5" style="border:none; height:10px;"></td>
+        </tr>
+      </table>
+
+      <table>
+        <thead>
+          <tr style="background-color: #eaeaea; font-weight: bold;">
+            <th width="30">NO</th>
+            <th width="150">RUANGAN / BAGIAN</th>
+            <th width="200">ITEM KEBERSIHAN</th>
+            <th width="120">STATUS</th>
+            <th width="120">WAKTU CEK</th>
+          </tr>
+        </thead>
+        <tbody>
+  `
+
+  dailyActivities.value.forEach((act: any) => {
+    html += `
+      <tr class="shift-header">
+        <td colspan="5" class="bold text-left" style="background-color: #d9e1f2;">
+          SHIFT \${act.shift?.name || '-'} (Petugas: \${act.user?.name || '-'} | Jam: \${act.start_time || '-'} - \${act.end_time || '-'} | SLA: \${act.is_late ? 'Terlambat' : 'Tepat Waktu'})
+        </td>
+      </tr>
+    `
+    
+    if (act.items && act.items.length > 0) {
+      act.items.forEach((item: any, itemIdx: number) => {
+        const room = item.area_object?.room_name || 'Umum'
+        const objName = item.area_object?.cleaning_object?.name || '-'
+        const status = item.is_checked ? 'BERSIH (v)' : 'KOTOR (x)'
+        const checkedAt = item.checked_at ? formatTimeOnly(item.checked_at) : '-'
+        
+        html += `
+          <tr>
+            <td>\${itemIdx + 1}</td>
+            <td class="text-left">\${room}</td>
+            <td class="text-left">\${objName}</td>
+            <td style="color: \${item.is_checked ? 'green' : 'red'}; font-weight: bold;">\${status}</td>
+            <td>\${checkedAt}</td>
+          </tr>
+        `
+      })
+    } else {
+      html += `
+        <tr>
+          <td colspan="5" style="color: gray;">Tidak ada item ceklist</td>
+        </tr>
+      `
+    }
+    
+    if (act.notes) {
+      html += `
+        <tr>
+          <td colspan="5" class="text-left" style="font-style: italic; background-color: #fff2cc;">
+            <b>Catatan Kendala:</b> \${act.notes}
+          </td>
+        </tr>
+      `
+    }
+  })
+
+  html += `
+        </tbody>
+      </table>
+      <br>
+      <table style="border:none;">
+        <tr>
+          <td colspan="2" style="border:none;" class="text-left">
+            Ket : v BERSIH<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;X KOTOR
+          </td>
+          <td style="border:none;"></td>
+          <td colspan="2" style="border:none;" class="text-center bold">PJ \${areaName.toUpperCase()}</td>
+        </tr>
+        <tr><td colspan="5" style="border:none; height:40px;"></td></tr>
+        <tr>
+          <td colspan="2" style="border:none;" class="text-left bold">(Housekeeping RS)</td>
+          <td style="border:none;"></td>
+          <td colspan="2" style="border:none;" class="text-center bold">........................................</td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `
+
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel' })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  const cleanAreaName = areaName.replace(/[^a-zA-Z0-9]/g, '_')
+  link.href = url
+  link.setAttribute('download', `Ceklist_Harian_\${cleanAreaName}_\${formattedDate}.xls`)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+  showToast('Berhasil mengunduh Laporan Ceklist Excel!', 'success')
+}
+
 function formatIndoDate(dateStr: string): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
@@ -520,6 +652,9 @@ function calculateDuration(start: string, end: string): number | string {
             
             <div class="modal-footer">
               <button class="btn btn-ghost" @click="showDailyModal = false">Tutup</button>
+              <button v-if="dailyActivities.length > 0" class="btn btn-secondary excel-btn-modal" @click="exportDailyToExcel">
+                🟢 Ekspor ke Excel (.xls)
+              </button>
               <button v-if="dailyActivities.length > 0" class="btn btn-primary" @click="printDailyReport">
                 🖨️ Cetak Laporan / Simpan PDF
               </button>
@@ -790,10 +925,21 @@ function calculateDuration(start: string, end: string): number | string {
   to { transform: rotate(360deg); }
 }
 
-/* ===== Spacing ===== */
-.mb-6 { margin-bottom: 1.5rem; }
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .export-grid {
+    grid-template-columns: 1fr;
+  }
 
-/* ===== Daily Modal ===== */
+  .filter-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+</style>
+
+<style>
+/* ===== Daily Modal (Global for Teleport) ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -888,6 +1034,17 @@ function calculateDuration(start: string, end: string): number | string {
 }
 .btn-ghost:hover {
   background: hsl(var(--muted));
+}
+
+.excel-btn-modal {
+  background-color: hsl(142, 70%, 15%) !important;
+  color: hsl(142, 70%, 75%) !important;
+  border: 1px solid hsl(142, 70%, 30%) !important;
+  transition: all 0.2s;
+}
+.excel-btn-modal:hover {
+  background-color: hsl(142, 70%, 20%) !important;
+  color: hsl(142, 70%, 85%) !important;
 }
 
 /* ===== Print Report Area Stylings ===== */
@@ -1147,44 +1304,53 @@ function calculateDuration(start: string, end: string): number | string {
   to { transform: scale(0.95); opacity: 0; }
 }
 
-/* ===== Responsive ===== */
-@media (max-width: 768px) {
-  .export-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .filter-row {
-    flex-direction: column;
-    gap: 1rem;
-  }
-}
-
 /* ===== Printing Media Queries ===== */
 @media print {
-  /* Hide all elements on the parent page */
-  body * {
-    visibility: hidden;
+  /* Hide main app wrapper completely to avoid background leaks and blank spaces */
+  #app {
+    display: none !important;
   }
   
-  /* Make sure background colors print correctly */
-  html, body {
+  /* Reset modal overlay container for printing */
+  .modal-overlay {
+    position: absolute !important;
+    inset: 0 !important;
     background: white !important;
-    color: black !important;
+    padding: 0 !important;
+    z-index: auto !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    overflow: visible !important;
   }
-  
-  /* Show only the print area and its children */
-  #daily-print-area, #daily-print-area * {
-    visibility: visible;
+
+  .modal-content {
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+    max-height: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+    display: block !important;
   }
-  
-  /* Position print area at top-left */
+
+  /* Hide print controls, headers, footers and close buttons */
+  .modal-header,
+  .modal-footer,
+  .modal-close,
+  button,
+  .btn {
+    display: none !important;
+  }
+
+  .modal-body {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
   #daily-print-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: white !important;
     color: black !important;
   }
@@ -1237,11 +1403,6 @@ function calculateDuration(start: string, end: string): number | string {
 
   .photo-print-el {
     max-height: 160px; /* larger in print */
-  }
-
-  /* Hide print buttons and scroll controls */
-  .modal-overlay, .modal-header, .modal-footer, .btn, button {
-    display: none !important;
   }
 }
 </style>
