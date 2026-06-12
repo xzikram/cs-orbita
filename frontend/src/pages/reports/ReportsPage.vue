@@ -177,10 +177,10 @@ function exportDailyToExcel() {
           <td colspan="5" class="header-title">LAPORAN CEKLIST KEBERSIHAN HARIAN - RS JEC ORBITA MAKASSAR</td>
         </tr>
         <tr>
-          <td colspan="5" class="header-meta">LOKASI : \${areaName.toUpperCase()}</td>
+          <td colspan="5" class="header-meta">LOKASI : ${areaName.toUpperCase()}</td>
         </tr>
         <tr>
-          <td colspan="5" class="header-meta">TANGGAL : \${formattedIndoDateStr.toUpperCase()}</td>
+          <td colspan="5" class="header-meta">TANGGAL : ${formattedIndoDateStr.toUpperCase()}</td>
         </tr>
         <tr>
           <td colspan="5" style="border:none; height:10px;"></td>
@@ -204,7 +204,7 @@ function exportDailyToExcel() {
     html += `
       <tr class="shift-header">
         <td colspan="5" class="bold text-left" style="background-color: #d9e1f2;">
-          SHIFT \${act.shift?.name || '-'} (Petugas: \${act.user?.name || '-'} | Jam: \${act.start_time || '-'} - \${act.end_time || '-'} | SLA: \${act.is_late ? 'Terlambat' : 'Tepat Waktu'})
+          SHIFT ${act.shift?.name || '-'} (Petugas: ${act.user?.name || '-'} | Jam: ${act.start_time || '-'} - ${act.end_time || '-'} | SLA: ${act.is_late ? 'Terlambat' : 'Tepat Waktu'})
         </td>
       </tr>
     `
@@ -218,11 +218,11 @@ function exportDailyToExcel() {
         
         html += `
           <tr>
-            <td>\${itemIdx + 1}</td>
-            <td class="text-left">\${room}</td>
-            <td class="text-left">\${objName}</td>
-            <td style="color: \${item.is_checked ? 'green' : 'red'}; font-weight: bold;">\${status}</td>
-            <td>\${checkedAt}</td>
+            <td>${itemIdx + 1}</td>
+            <td class="text-left">${room}</td>
+            <td class="text-left">${objName}</td>
+            <td style="color: ${item.is_checked ? 'green' : 'red'}; font-weight: bold;">${status}</td>
+            <td>${checkedAt}</td>
           </tr>
         `
       })
@@ -238,7 +238,7 @@ function exportDailyToExcel() {
       html += `
         <tr>
           <td colspan="5" class="text-left" style="font-style: italic; background-color: #fff2cc;">
-            <b>Catatan Kendala:</b> \${act.notes}
+            <b>Catatan Kendala:</b> ${act.notes}
           </td>
         </tr>
       `
@@ -255,7 +255,7 @@ function exportDailyToExcel() {
             Ket : v BERSIH<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;X KOTOR
           </td>
           <td style="border:none;"></td>
-          <td colspan="2" style="border:none;" class="text-center bold">PJ \${areaName.toUpperCase()}</td>
+          <td colspan="2" style="border:none;" class="text-center bold">PJ ${areaName.toUpperCase()}</td>
         </tr>
         <tr><td colspan="5" style="border:none; height:40px;"></td></tr>
         <tr>
@@ -273,7 +273,7 @@ function exportDailyToExcel() {
   const link = document.createElement('a')
   const cleanAreaName = areaName.replace(/[^a-zA-Z0-9]/g, '_')
   link.href = url
-  link.setAttribute('download', `Ceklist_Harian_\${cleanAreaName}_\${formattedDate}.xls`)
+  link.setAttribute('download', `Ceklist_Harian_${cleanAreaName}_${formattedDate}.xls`)
   document.body.appendChild(link)
   link.click()
   link.remove()
