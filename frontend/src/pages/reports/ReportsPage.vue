@@ -1212,6 +1212,7 @@ function calculateDuration(start: string, end: string): number | string {
 
 .photo-print-wrapper {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   background: hsl(var(--muted) / 0.2);
   border: 1px dashed hsl(var(--border));
@@ -1219,11 +1220,14 @@ function calculateDuration(start: string, end: string): number | string {
   border-radius: 0.5rem;
   min-height: 120px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .photo-print-el {
-  max-height: 110px;
+  height: 100px;
+  width: calc(50% - 0.25rem);
+  min-width: 80px;
+  max-width: 150px;
   object-fit: cover;
   border-radius: 0.25rem;
   border: 1px solid hsl(var(--border));
@@ -1395,10 +1399,16 @@ function calculateDuration(start: string, end: string): number | string {
   .photo-print-wrapper {
     background: white !important;
     border: 1px solid #ddd !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
   }
 
   .photo-print-el {
-    max-height: 160px; /* larger in print */
+    height: 120px !important;
+    width: calc(50% - 0.25rem) !important;
+    max-width: 150px !important;
+    object-fit: cover !important;
   }
 }
 </style>
