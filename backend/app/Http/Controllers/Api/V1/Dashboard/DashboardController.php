@@ -158,24 +158,8 @@ class DashboardController extends Controller
                             $summaryPending++;
                         }
                     } else {
-                        // Check if schedule exists and is overdue
-                        $schedule = $allSchedules->get($key)?->first();
-                        if ($schedule && $schedule->scheduled_time) {
-                            $scheduledTimeStr = $schedule->scheduled_time instanceof \DateTimeInterface
-                                ? $schedule->scheduled_time->format('H:i')
-                                : (string) $schedule->scheduled_time;
-
-                            if ($currentTime > $scheduledTimeStr) {
-                                $statuses[$shift->id] = 'late';
-                                $summaryLate++;
-                            } else {
-                                $statuses[$shift->id] = 'none';
-                                $summaryNone++;
-                            }
-                        } else {
-                            $statuses[$shift->id] = 'none';
-                            $summaryNone++;
-                        }
+                        $statuses[$shift->id] = 'none';
+                        $summaryNone++;
                     }
                 }
 

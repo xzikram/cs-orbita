@@ -39,7 +39,6 @@ const summaryCards = computed(() => {
     { icon: '🏥', label: 'Total Area', value: s.total_areas, color: 'primary' },
     { icon: '✅', label: 'Bersih', value: s.clean, pct: Math.round((s.clean / total) * 100), color: 'success' },
     { icon: '⏳', label: 'Pending', value: s.pending, pct: Math.round((s.pending / total) * 100), color: 'warning' },
-    { icon: '🔴', label: 'Terlambat', value: s.late, pct: Math.round((s.late / total) * 100), color: 'destructive' },
   ]
 })
 
@@ -74,7 +73,6 @@ function getStatusLabel(status: string) {
   switch (status) {
     case 'clean': return '✅ Sudah Bersih'
     case 'pending': return '⏳ Sedang Proses'
-    case 'late': return '🔴 Terlambat'
     default: return '⬜ Belum Dikerjakan'
   }
 }
@@ -133,7 +131,6 @@ onMounted(() => {
       <div class="legend">
         <div class="legend-item"><div class="legend-box heatmap-clean"></div> Bersih</div>
         <div class="legend-item"><div class="legend-box heatmap-pending"></div> Pending</div>
-        <div class="legend-item"><div class="legend-box heatmap-late"></div> Terlambat</div>
         <div class="legend-item"><div class="legend-box heatmap-none"></div> Belum</div>
       </div>
     </div>
@@ -256,7 +253,7 @@ onMounted(() => {
 /* Summary Cards */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
 }
 
