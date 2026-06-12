@@ -545,8 +545,7 @@ function calculateDuration(start: string, end: string): number | string {
               <div id="daily-print-area">
                 <div class="print-header-report">
                   <div class="print-logo">
-                    <span class="logo-bold">JEC</span>
-                    <span class="logo-sub">Rumah Sakit Mata<br>JEC ORBITA @ Makassar</span>
+                    <img src="/Logo%20RS%20JEC%20ORBITA.png" alt="Logo RS JEC Orbita" class="print-logo-img" />
                   </div>
                   <div class="print-meta-info">
                     <h2>LAPORAN CEKLIST HARIAN & FOTO BUKTI</h2>
@@ -1059,23 +1058,12 @@ function calculateDuration(start: string, end: string): number | string {
 
 .print-logo {
   display: flex;
-  flex-direction: column;
 }
 
-.logo-bold {
-  font-size: 2rem;
-  font-weight: 900;
-  color: hsl(var(--primary));
-  line-height: 1;
-  letter-spacing: -0.05em;
-}
-
-.logo-sub {
-  font-size: 0.6875rem;
-  line-height: 1.2;
-  margin-top: 0.25rem;
-  color: hsl(var(--muted-foreground));
-  font-weight: 700;
+.print-logo-img {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
 }
 
 .print-meta-info {
