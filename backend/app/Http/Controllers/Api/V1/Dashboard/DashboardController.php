@@ -101,7 +101,7 @@ class DashboardController extends Controller
                 'total_activities' => $todayActivities->count(),
                 'areas_completed' => $completedAreaIds->count(),
                 'areas_pending' => $totalAreas - $completedAreaIds->count(),
-                'areas_late' => $lateActivities->pluck('area_id')->unique()->count(),
+                'areas_late' => 0,
                 'completion_rate' => $totalAreas > 0
                     ? round(($completedAreaIds->count() / $totalAreas) * 100, 1) : 0,
                 'recent_activities' => $recentActivities,
@@ -433,7 +433,8 @@ class DashboardController extends Controller
                 'total_areas' => $totalAreas,
                 'completed' => $completed,
                 'pending' => $totalAreas - $completed,
-                'late' => $late,
+                'late' => 0,
+                'total_activities' => $todayActivities->count(),
                 'completion_rate' => $totalAreas > 0
                     ? round(($completed / $totalAreas) * 100, 1) : 0,
                 'problem_areas' => $problemAreas,

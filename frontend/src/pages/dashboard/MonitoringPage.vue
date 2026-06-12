@@ -194,13 +194,6 @@ function closePreview() {
           <span class="stat-label">Sedang Berjalan</span>
         </div>
       </div>
-      <div class="stat-card animate-slide-up stagger-4">
-        <div class="stat-icon stat-icon-late">⚠️</div>
-        <div class="stat-info">
-          <span class="stat-value animate-count">{{ stats.late }}</span>
-          <span class="stat-label">Terlambat</span>
-        </div>
-      </div>
     </div>
 
     <!-- Filters -->
@@ -250,7 +243,7 @@ function closePreview() {
           </thead>
           <tbody>
             <template v-for="act in filteredActivities" :key="act.id">
-              <tr :class="{ 'row-expanded': expandedId === act.id, 'row-late': act.is_late }">
+              <tr :class="{ 'row-expanded': expandedId === act.id }">
                 <td class="td-date">{{ formatDate(act.date) }}</td>
                 <td class="td-area">
                   <span class="area-name">{{ act.area?.name }}</span>
@@ -279,7 +272,6 @@ function closePreview() {
                   <span class="badge" :class="getStatusBadge(act.status).class">
                     {{ getStatusBadge(act.status).icon }} {{ getStatusBadge(act.status).label }}
                   </span>
-                  <span v-if="act.is_late" class="badge badge-destructive ml-1">🔴 Telat</span>
                 </td>
                 <td>
                   <button class="btn-detail" @click="toggleDetail(act.id)">
@@ -465,7 +457,7 @@ function closePreview() {
 /* Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
 }
 

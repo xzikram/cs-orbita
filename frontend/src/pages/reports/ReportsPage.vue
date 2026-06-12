@@ -204,7 +204,7 @@ function exportDailyToExcel() {
     html += `
       <tr class="shift-header">
         <td colspan="5" class="bold text-left" style="background-color: #d9e1f2;">
-          SHIFT ${act.shift?.name || '-'} (Petugas: ${act.user?.name || '-'} | Jam: ${act.start_time || '-'} - ${act.end_time || '-'} | SLA: ${act.is_late ? 'Terlambat' : 'Tepat Waktu'})
+          SHIFT ${act.shift?.name || '-'} (Petugas: ${act.user?.name || '-'} | Jam: ${act.start_time || '-'} - ${act.end_time || '-'})
         </td>
       </tr>
     `
@@ -419,7 +419,7 @@ function calculateDuration(start: string, end: string): number | string {
           </div>
           <div class="export-desc">
             <p>
-              Mengekspor log lengkap seluruh pembersihan harian, jam mulai/selesai, pencapaian SLA tepat waktu, durasi pengerjaan, nama petugas, serta catatan kendala operasional lapangan.
+              Mengekspor log lengkap seluruh pembersihan harian, jam mulai/selesai, durasi pengerjaan, nama petugas, serta catatan kendala operasional lapangan.
             </p>
           </div>
         </div>
@@ -574,8 +574,6 @@ function calculateDuration(start: string, end: string): number | string {
                       <span>Petugas: <b>{{ act.user?.name || '-' }}</b></span>
                       <span class="divider">|</span>
                       <span>Waktu: <b>{{ act.start_time || '-' }} - {{ act.end_time || '-' }}</b> ({{ calculateDuration(act.start_time, act.end_time) }} Menit)</span>
-                      <span class="divider">|</span>
-                      <span>SLA: <b :class="act.is_late ? 'text-late' : 'text-ontime'">{{ act.is_late ? 'Terlambat' : 'Tepat Waktu' }}</b></span>
                     </div>
                   </div>
 

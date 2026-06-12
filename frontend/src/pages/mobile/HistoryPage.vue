@@ -44,7 +44,6 @@ onMounted(() => {
           </div>
           <p class="text-xs text-muted-foreground mb-2">{{ activity.shift?.name }}</p>
           <div class="flex gap-2">
-            <span v-if="activity.is_late" class="badge badge-destructive">Terlambat</span>
             <span class="badge" :class="activity.status === 'completed' ? 'badge-success' : 'badge-warning'">
               {{ activity.status === 'completed' ? 'Selesai' : 'Pending' }}
             </span>

@@ -76,11 +76,11 @@ onUnmounted(() => {
 
         <div class="card-stat animate-slide-up stagger-3">
           <div class="stat-header">
-            <span class="stat-title">Terlambat</span>
-            <span class="stat-icon text-destructive">⚠️</span>
+            <span class="stat-title">Total Aktivitas</span>
+            <span class="stat-icon text-accent">📝</span>
           </div>
-          <div class="stat-value">{{ stats.areas_late }}</div>
-          <p class="stat-desc text-destructive">Melewati batas waktu SLA</p>
+          <div class="stat-value">{{ stats.total_activities }}</div>
+          <p class="stat-desc text-accent">Aktivitas terkirim hari ini</p>
         </div>
       </div>
 
@@ -110,7 +110,6 @@ onUnmounted(() => {
                   <span class="badge" :class="act.status === 'completed' ? 'badge-success' : 'badge-warning'">
                     {{ act.status === 'completed' ? 'Selesai' : 'Pending' }}
                   </span>
-                  <span v-if="act.is_late" class="badge badge-destructive ml-2">Telat</span>
                 </td>
               </tr>
               <tr v-if="stats.recent_activities.length === 0">

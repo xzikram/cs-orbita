@@ -157,13 +157,6 @@ class CleaningActivityController extends Controller
 
             if ($schedule) {
                 $scheduleId = $schedule->id;
-                $scheduledTime = \Carbon\Carbon::parse($validated['date'] . ' ' . $schedule->scheduled_time->format('H:i'));
-                $actualTime = \Carbon\Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
-
-                if ($actualTime->isAfter($scheduledTime->addMinutes($schedule->tolerance_minutes))) {
-                    $isLate = true;
-                    $lateMinutes = intval($actualTime->diffInMinutes($scheduledTime));
-                }
             }
 
             $status = $request->input('status', 'completed') === 'in_progress'

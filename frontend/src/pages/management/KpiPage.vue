@@ -176,18 +176,6 @@ function hideBarTooltip() {
           <p class="stat-desc mt-2"><b>{{ stats.completed_activities }}</b> dari {{ stats.total_activities }} aktivitas selesai</p>
         </div>
 
-        <div class="card-stat animate-slide-up gradient-2">
-          <div class="stat-header">
-            <span class="stat-title">Kepatuhan SLA</span>
-            <span class="stat-icon">⏱️</span>
-          </div>
-          <div class="stat-value color-primary">{{ stats.sla_compliance }}%</div>
-          <div class="progress-bg mt-2">
-            <div class="progress-fill fill-primary" :style="{ width: animated ? `${stats.sla_compliance}%` : '0%' }"></div>
-          </div>
-          <p class="stat-desc mt-2"><b>{{ stats.total_activities - stats.late_activities }}</b> aktivitas tepat waktu</p>
-        </div>
-
         <div class="card-stat animate-slide-up gradient-3">
           <div class="stat-header">
             <span class="stat-title">Skor Audit</span>
@@ -455,7 +443,7 @@ function hideBarTooltip() {
 /* ===== Stats Card Custom Designs ===== */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
 }
 

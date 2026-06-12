@@ -77,10 +77,10 @@ onUnmounted(() => {
           <p class="mt-4 text-xl text-warning/80">Area Menunggu Pembersihan</p>
         </div>
 
-        <div class="card-stat border-destructive animate-slide-up stagger-3" :class="{'pulse-danger': stats.late > 0}">
-          <h2 class="stat-label">Terlambat</h2>
-          <div class="stat-value text-destructive">{{ stats.late }}</div>
-          <p class="mt-4 text-xl text-destructive/80">Melewati Batas SLA</p>
+        <div class="card-stat border-accent animate-slide-up stagger-3">
+          <h2 class="stat-label">Total Aktivitas</h2>
+          <div class="stat-value text-accent">{{ stats.total_activities || 0 }}</div>
+          <p class="mt-4 text-xl text-accent/80">Aktivitas Terkirim Hari Ini</p>
         </div>
       </div>
 
@@ -104,7 +104,6 @@ onUnmounted(() => {
                 <div class="feed-status">
                   <span v-if="act.status === 'completed'" class="badge-tv badge-success">Selesai</span>
                   <span v-else class="badge-tv badge-warning">Proses</span>
-                  <span v-if="act.is_late" class="badge-tv badge-destructive mt-2">Telat</span>
                 </div>
               </div>
             </div>
@@ -230,6 +229,7 @@ onUnmounted(() => {
 
 .border-warning { border-color: hsl(var(--warning) / 0.3) !important; }
 .border-destructive { border-color: hsl(var(--destructive) / 0.3) !important; }
+.border-accent { border-color: hsl(262, 83%, 65% / 0.3) !important; }
 
 .stat-label {
   font-size: 1.5rem;

@@ -45,7 +45,7 @@ class ReportController extends Controller
             fputcsv($file, [
                 'ID', 'Tanggal', 'Shift', 'Area', 'Petugas', 
                 'Waktu Mulai', 'Waktu Selesai', 'Durasi (Menit)', 
-                'Status', 'SLA (Terlambat)', 'Catatan'
+                'Status', 'Catatan'
             ]);
 
             foreach ($activities as $act) {
@@ -67,7 +67,6 @@ class ReportController extends Controller
                     $act->end_time ?? '-',
                     $duration,
                     $act->status?->label() ?? '-',
-                    $act->is_late ? 'Ya' : 'Tidak',
                     $act->notes ?? ''
                 ]);
             }
