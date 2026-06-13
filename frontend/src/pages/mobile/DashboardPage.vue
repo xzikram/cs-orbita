@@ -14,16 +14,21 @@ const pendingSyncCount = ref(0)
 const loading = ref(true)
 const syncing = ref(false)
 
+const activeProgresses = ref<Array<{
+  id?: number
+  uuid?: string
+  area_name: string
+  percentage: number
+  checked_count: number
+  total_count: number
+  is_offline?: boolean
+}>>([])
+
 // PWA installation states
 const isMobile = ref(false)
 const pwaPlatform = ref<'android' | 'ios' | 'other'>('other')
 const showInstallBanner = ref(false)
 const deferredPrompt = ref<any>(null)
-
-const completionRate = computed(() => {
-  if (todayTotal.value === 0) return 0
-  return Math.round((todayCompleted.value / todayTotal.value) * 100)
-})
 
 async function fetchDashboardData() {
   loading.value = true
@@ -31,6 +36,43 @@ async function fetchDashboardData() {
     const { data } = await api.get('/api/v1/dashboard/mobile')
     todayTotal.value = data.data.today_total
     todayCompleted.value = data.data.today_completed
+
+    // Get online activities
+    const onlineActs = data.data.activities || []
+
+    // Get offline pending activities
+    const offlineActs = await getPendingActivities()
+
+    // Map offline activities
+    const mappedOffline = offlineActs.map(p => {
+      const total = p.items.length
+      const checked = p.items.filter(i => i.is_checked).length
+      return {
+        uuid: p.uuid,
+        area_name: p.area_name,
+        percentage: total > 0 ? Math.round((checked / total) * 100) : 0,
+        checked_count: checked,
+        total_count: total,
+        is_offline: true
+      }
+    })
+
+    // Map online activities (excluding ones that are in the offline sync queue by UUID)
+    const pendingUuids = new Set(offlineActs.map(p => p.uuid))
+    const mappedOnline = onlineActs
+      .filter((a: any) => !pendingUuids.has(a.uuid))
+      .map((a: any) => ({
+        id: a.id,
+        uuid: a.uuid,
+        area_name: a.area_name,
+        percentage: a.percentage,
+        checked_count: a.checked_count,
+        total_count: a.total_count,
+        is_offline: false
+      }))
+
+    // Combine them
+    activeProgresses.value = [...mappedOffline, ...mappedOnline]
   } catch (e) {
     console.error('Failed to load dashboard', e)
   } finally {
@@ -241,14 +283,27 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Progress -->
-    <div class="card mb-6 animate-slide-up stagger-3">
-      <div class="flex justify-between items-center mb-2">
-        <h3 class="text-sm font-medium">Progress Hari Ini</h3>
-        <span class="text-sm font-bold text-primary">{{ completionRate }}%</span>
+    <!-- Progress Per Lantai / Area -->
+    <div class="mb-6 animate-slide-up stagger-3">
+      <h3 class="text-xs text-muted-foreground uppercase tracking-wider mb-3 font-semibold">Progress Area Pengerjaan</h3>
+      <div v-if="activeProgresses.length > 0" class="flex flex-col gap-3">
+        <div v-for="prog in activeProgresses" :key="prog.id || prog.uuid" class="card progress-card-item">
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center gap-2">
+              <span class="area-badge">🏢</span>
+              <span class="font-bold text-sm text-foreground">{{ prog.area_name }}</span>
+              <span v-if="prog.is_offline" class="badge-offline">Offline</span>
+            </div>
+            <span class="text-xs font-bold text-primary">{{ prog.checked_count }}/{{ prog.total_count }} ({{ prog.percentage }}%)</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" :style="{ width: `${prog.percentage}%` }"></div>
+          </div>
+        </div>
       </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" :style="{ width: `${completionRate}%` }"></div>
+      <div v-else class="card text-center py-6 text-muted-foreground">
+        <p class="text-xs">Belum ada area yang mulai dikerjakan.</p>
+        <p class="text-[10px] mt-1 text-muted-foreground/60">Scan QR Code area untuk memulai checklist.</p>
       </div>
     </div>
 
@@ -433,6 +488,33 @@ onMounted(() => {
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   display: inline-block;
+}
+
+.badge-offline {
+  background: hsl(var(--warning) / 0.15);
+  color: hsl(var(--warning));
+  border: 1px solid hsl(var(--warning) / 0.3);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  display: inline-block;
+  line-height: 1;
+}
+
+.area-badge {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.progress-card-item {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: 1rem;
+}
+
+.progress-card-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
 }
 
 @keyframes spin {

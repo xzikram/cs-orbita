@@ -45,6 +45,25 @@ class DashboardController extends Controller
         // Ensure total tasks is at least the number of completed tasks today
         $todayTotal = max($todayTotal, $todayCompleted);
 
+        // Fetch user's activities today with their items to calculate floor-by-floor progress
+        $activities = CleaningActivity::where('user_id', $user->id)
+            ->where('date', $todayStr)
+            ->with(['area', 'items'])
+            ->get()
+            ->map(function ($activity) {
+                $total = $activity->items->count();
+                $checked = $activity->items->where('is_checked', true)->count();
+                return [
+                    'id' => $activity->id,
+                    'uuid' => $activity->uuid,
+                    'area_name' => $activity->area->name ?? 'Area',
+                    'area_code' => $activity->area->code ?? '',
+                    'checked_count' => $checked,
+                    'total_count' => $total,
+                    'percentage' => $total > 0 ? (int)round(($checked / $total) * 100) : 0,
+                ];
+            });
+
         return response()->json([
             'data' => [
                 'today_total' => $todayTotal,
@@ -52,6 +71,7 @@ class DashboardController extends Controller
                 'pending_sync' => CleaningActivity::where('user_id', $user->id)
                     ->where('sync_status', 'pending')->count(),
                 'assigned_areas' => $assignedAreaIds->count(),
+                'activities' => $activities,
             ],
         ]);
     }
