@@ -10,6 +10,7 @@ use App\Models\Area;
 use App\Models\AreaSchedule;
 use App\Models\QrCode;
 use App\Models\SyncLog;
+use App\Models\Shift;
 use App\Enums\ActivityStatus;
 use App\Enums\SyncStatus;
 use Illuminate\Http\JsonResponse;
@@ -412,7 +413,7 @@ class CleaningActivityController extends Controller
         }
 
         try {
-            $shifts = Shift::active()->get();
+            $shifts = \App\Models\Shift::active()->get();
             
             foreach ($shifts as $shift) {
                 $start = $shift->start_time instanceof \Carbon\Carbon 
@@ -440,7 +441,7 @@ class CleaningActivityController extends Controller
         }
         
         try {
-            $firstShift = Shift::active()->ordered()->first();
+            $firstShift = \App\Models\Shift::active()->ordered()->first();
             return $firstShift ? $firstShift->id : 1;
         } catch (\Exception $e) {
             return 1;
