@@ -83,25 +83,6 @@ async function handleLogin() {
           <span v-else>Masuk</span>
         </button>
       </form>
-
-      <!-- Demo Accounts -->
-      <div class="demo-accounts">
-        <p class="demo-title">Demo Accounts</p>
-        <div class="demo-grid">
-          <button class="demo-btn" @click="email = 'admin@cleantrack.id'; password = 'password'">
-            <span class="demo-role">Admin</span>
-          </button>
-          <button class="demo-btn" @click="email = 'supervisor@cleantrack.id'; password = 'password'">
-            <span class="demo-role">Supervisor</span>
-          </button>
-          <button class="demo-btn" @click="email = 'andi@cleantrack.id'; password = 'password'">
-            <span class="demo-role">CS</span>
-          </button>
-          <button class="demo-btn" @click="email = 'direktur@cleantrack.id'; password = 'password'">
-            <span class="demo-role">Manajemen</span>
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -238,47 +219,5 @@ async function handleLogin() {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-.demo-accounts {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid hsl(var(--border));
-}
-
-.demo-title {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  text-align: center;
-  margin-bottom: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.demo-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-}
-
-.demo-btn {
-  padding: 0.5rem;
-  background: hsl(var(--muted) / 0.5);
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-}
-
-.demo-btn:hover {
-  border-color: hsl(var(--primary) / 0.4);
-  background: hsl(var(--muted));
-}
-
-.demo-role {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
 }
 </style>
