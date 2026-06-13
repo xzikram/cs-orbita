@@ -151,6 +151,10 @@ class CleaningActivityController extends Controller
             'device_id' => 'nullable|string',
         ]);
 
+        if (empty($validated['shift_id'])) {
+            $validated['shift_id'] = $this->determineShiftId($validated['start_time']);
+        }
+
         return DB::transaction(function () use ($request, $validated) {
             $scheduleId = null;
             if (!empty($validated['shift_id'])) {
@@ -285,7 +289,7 @@ class CleaningActivityController extends Controller
             'activities' => 'required|array',
             'activities.*.uuid' => 'required|uuid',
             'activities.*.area_id' => 'required|exists:areas,id',
-            'activities.*.shift_id' => 'required|exists:shifts,id',
+            'activities.*.shift_id' => 'nullable|exists:shifts,id',
             'activities.*.date' => 'required|date',
             'activities.*.start_time' => 'required',
             'activities.*.end_time' => 'nullable',
@@ -311,12 +315,17 @@ class CleaningActivityController extends Controller
                     continue;
                 }
 
+                $shiftId = $actData['shift_id'] ?? null;
+                if (empty($shiftId)) {
+                    $shiftId = $this->determineShiftId($actData['start_time']);
+                }
+
                 // Create activity
                 $activity = CleaningActivity::create([
                     'uuid' => $actData['uuid'],
                     'area_id' => $actData['area_id'],
                     'user_id' => $request->user()->id,
-                    'shift_id' => $actData['shift_id'],
+                    'shift_id' => $shiftId,
                     'date' => $actData['date'],
                     'start_time' => $actData['start_time'],
                     'end_time' => $actData['end_time'],
@@ -394,5 +403,32 @@ class CleaningActivityController extends Controller
             'message' => 'Status laporan berhasil diperbarui menjadi ' . $request->status,
             'data' => $activity
         ]);
+    }
+
+    private function determineShiftId(string $timeStr): int
+    {
+        if (strlen($timeStr) > 5) {
+            $timeStr = substr($timeStr, 0, 5);
+        }
+
+        $shifts = Shift::active()->get();
+        
+        foreach ($shifts as $shift) {
+            $start = $shift->start_time->format('H:i');
+            $end = $shift->end_time->format('H:i');
+            
+            if ($start < $end) {
+                if ($timeStr >= $start && $timeStr < $end) {
+                    return $shift->id;
+                }
+            } else {
+                if ($timeStr >= $start || $timeStr < $end) {
+                    return $shift->id;
+                }
+            }
+        }
+        
+        $firstShift = Shift::active()->ordered()->first();
+        return $firstShift ? $firstShift->id : 1;
     }
 }

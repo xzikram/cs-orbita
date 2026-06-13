@@ -7,7 +7,7 @@ export interface PendingActivity {
   uuid: string
   area_id: number
   area_name: string
-  shift_id: number
+  shift_id?: number
   date: string
   start_time: string
   end_time: string | null
