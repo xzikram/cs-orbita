@@ -20,6 +20,7 @@ export interface User {
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const loading = ref(false)
+  const initialized = ref(false)
 
   const isAuthenticated = computed(() => !!user.value)
   const isCleaningService = computed(() => user.value?.role === 'cleaning_service')
@@ -89,12 +90,15 @@ export const useAuthStore = defineStore('auth', () => {
       if (cached) {
         user.value = cached
       }
+    } finally {
+      initialized.value = true
     }
   }
 
   return {
     user,
     loading,
+    initialized,
     isAuthenticated,
     isCleaningService,
     isSupervisor,

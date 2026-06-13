@@ -21,16 +21,17 @@ router.beforeEach(async (to, _from, next) => {
   const { useAuthStore } = await import('./stores/auth')
   const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    // Try to fetch user first
+  // Wait for initial session fetch if not yet initialized
+  if (!authStore.initialized) {
     try {
       await authStore.fetchUser()
-      if (!authStore.isAuthenticated) {
-        return next({ name: 'login' })
-      }
     } catch {
-      return next({ name: 'login' })
+      // Ignore
     }
+  }
+
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return next({ name: 'login' })
   }
 
   if (to.meta.guest && authStore.isAuthenticated) {

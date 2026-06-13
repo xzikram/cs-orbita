@@ -36,7 +36,7 @@ class AuthController extends Controller
             ]);
         }
 
-        Auth::login($user);
+        Auth::login($user, true);
 
         $user = Auth::user();
 
