@@ -411,24 +411,39 @@ class CleaningActivityController extends Controller
             $timeStr = substr($timeStr, 0, 5);
         }
 
-        $shifts = Shift::active()->get();
-        
-        foreach ($shifts as $shift) {
-            $start = $shift->start_time->format('H:i');
-            $end = $shift->end_time->format('H:i');
+        try {
+            $shifts = Shift::active()->get();
             
-            if ($start < $end) {
-                if ($timeStr >= $start && $timeStr < $end) {
-                    return $shift->id;
-                }
-            } else {
-                if ($timeStr >= $start || $timeStr < $end) {
-                    return $shift->id;
+            foreach ($shifts as $shift) {
+                $start = $shift->start_time instanceof \Carbon\Carbon 
+                    ? $shift->start_time->format('H:i') 
+                    : substr((string)$shift->start_time, 0, 5);
+                $end = $shift->end_time instanceof \Carbon\Carbon 
+                    ? $shift->end_time->format('H:i') 
+                    : substr((string)$shift->end_time, 0, 5);
+                
+                if (strlen($start) > 5) $start = substr($start, 0, 5);
+                if (strlen($end) > 5) $end = substr($end, 0, 5);
+                
+                if ($start < $end) {
+                    if ($timeStr >= $start && $timeStr < $end) {
+                        return $shift->id;
+                    }
+                } else {
+                    if ($timeStr >= $start || $timeStr < $end) {
+                        return $shift->id;
+                    }
                 }
             }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Error determining shift_id: " . $e->getMessage());
         }
         
-        $firstShift = Shift::active()->ordered()->first();
-        return $firstShift ? $firstShift->id : 1;
+        try {
+            $firstShift = Shift::active()->ordered()->first();
+            return $firstShift ? $firstShift->id : 1;
+        } catch (\Exception $e) {
+            return 1;
+        }
     }
 }
