@@ -12,7 +12,7 @@ const router = useRouter()
 const route = useRoute()
 const { isOnline } = useOnline()
 
-const uuid = route.query.uuid as string || uuidv4()
+const qrUuid = route.query.uuid as string || ''
 const isContinuation = route.query.continue === '1'
 const authStore = useAuthStore()
 
@@ -200,8 +200,10 @@ async function submitActivity() {
   const endTime = formatTime(new Date())
   const date = getLocalDateString(new Date())
 
+  // Always generate a fresh UUID for the activity (not the QR code UUID)
+  const activityUuid = uuidv4()
   const activityData = {
-    uuid,
+    uuid: activityUuid,
     area_id: parseInt(props.areaId),
     date,
     start_time: startTime.value,

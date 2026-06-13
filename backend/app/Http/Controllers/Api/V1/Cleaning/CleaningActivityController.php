@@ -167,11 +167,16 @@ class CleaningActivityController extends Controller
                 }
             }
 
-            // Upsert: find existing activity for this user + area + date
+            // Upsert: find existing activity by user + area + date, or by UUID
             $activity = CleaningActivity::where('user_id', $request->user()->id)
                 ->where('area_id', $validated['area_id'])
                 ->whereDate('date', $validated['date'])
                 ->first();
+
+            // Also check if UUID already exists (prevent duplicate key error)
+            if (!$activity && !empty($validated['uuid'])) {
+                $activity = CleaningActivity::where('uuid', $validated['uuid'])->first();
+            }
 
             if ($activity) {
                 // Update existing activity
@@ -210,9 +215,9 @@ class CleaningActivityController extends Controller
                     }
                 }
             } else {
-                // Create new activity
+                // Create new activity - always generate a fresh UUID
                 $activity = CleaningActivity::create([
-                    'uuid' => $validated['uuid'] ?? Str::uuid()->toString(),
+                    'uuid' => Str::uuid()->toString(),
                     'area_id' => $validated['area_id'],
                     'user_id' => $request->user()->id,
                     'shift_id' => $validated['shift_id'] ?? null,
