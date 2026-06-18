@@ -35,11 +35,22 @@ const filteredActivities = computed(() => {
   return list
 })
 
+// Helper: get YYYY-MM-DD using local timezone (NOT UTC)
+function getLocalDateString(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 async function loadData(page = 1) {
-  loading.value = true
+  // Only show loading spinner if no data loaded yet (prevent flicker on auto-refresh)
+  if (activities.value.length === 0) {
+    loading.value = true
+  }
   try {
     const response = await api.get('/api/v1/activities', {
-      params: { page, per_page: perPage.value, date: new Date().toISOString().split('T')[0] }
+      params: { page, per_page: perPage.value, date: getLocalDateString() }
     })
     const paginatedData = response.data.data
     activities.value = paginatedData.data || paginatedData

@@ -52,4 +52,18 @@ router.beforeEach(async (to, _from, next) => {
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)
+
+// Handle 401 auth errors via custom event (from axios interceptor)
+// Using debounce flag to prevent multiple rapid redirects
+let isRedirectingToLogin = false
+window.addEventListener('auth:unauthorized', () => {
+  if (!isRedirectingToLogin && router.currentRoute.value.name !== 'login') {
+    isRedirectingToLogin = true
+    router.push({ name: 'login' }).finally(() => {
+      // Reset flag after a short delay to allow future redirects
+      setTimeout(() => { isRedirectingToLogin = false }, 2000)
+    })
+  }
+})
+
 app.mount('#app')

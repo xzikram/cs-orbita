@@ -21,7 +21,7 @@ async function loadData() {
   } catch (e) {
     console.error(e)
   } finally {
-    loading.value = false
+    if (loading.value) loading.value = false
   }
 }
 

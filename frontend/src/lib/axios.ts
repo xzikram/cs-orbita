@@ -15,9 +15,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
-      }
+      // Dispatch custom event instead of full page reload to prevent flickering/redirect loops
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
     }
     return Promise.reject(error)
   }

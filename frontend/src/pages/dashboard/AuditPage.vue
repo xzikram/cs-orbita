@@ -2,14 +2,22 @@
 import { ref, onMounted, computed } from 'vue'
 import api from '../../lib/axios'
 
+// Helper: get YYYY-MM-DD using local timezone (NOT UTC)
+function getLocalDateString(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const data = ref({
-  date: new Date().toISOString().split('T')[0],
+  date: getLocalDateString(),
   shifts: [] as any[],
   areas: [] as any[],
   summary: { total_areas: 0, total_objects: 0, total_checked: 0, total_cells: 0, completion_rate: 0 }
 })
 const loading = ref(true)
-const selectedDate = ref(new Date().toISOString().split('T')[0])
+const selectedDate = ref(getLocalDateString())
 const expandedAreaId = ref<number | null>(null)
 
 const dynamicColspan = computed(() => {
