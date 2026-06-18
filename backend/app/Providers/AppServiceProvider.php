@@ -15,6 +15,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Force timezone to Asia/Makassar (WITA, UTC+8)
+        // This ensures today(), now(), Carbon functions use the correct timezone
+        // even if the server system timezone is set to UTC
+        $tz = config('app.timezone', 'Asia/Makassar');
+        date_default_timezone_set($tz);
+
         // Admin gate - used in routes
         Gate::define('admin', function ($user) {
             return $user->role === RoleEnum::ADMINISTRATOR;
