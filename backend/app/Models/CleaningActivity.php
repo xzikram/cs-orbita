@@ -25,11 +25,11 @@ class CleaningActivity extends Model
     protected function casts(): array
     {
         return [
-            'date' => 'date',
+            'date' => 'date:Y-m-d',
             'status' => ActivityStatus::class,
             'sync_status' => SyncStatus::class,
             'is_late' => 'boolean',
-            'submitted_at' => 'datetime',
+            'submitted_at' => 'datetime:Y-m-d H:i:s',
         ];
     }
 
