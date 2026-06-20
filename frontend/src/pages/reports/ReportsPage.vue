@@ -238,7 +238,7 @@ function exportDailyToExcel() {
     html += `
       <tr class="shift-header">
         <td colspan="5" class="bold text-left" style="background-color: #d9e1f2;">
-          Petugas: ${act.user?.name || '-'} | Jam: ${act.start_time || '-'} - ${act.end_time || '-'}
+          Petugas: ${act.user?.name || '-'} | Tanggal: ${formatIndoShortDate(act.date)} | Jam: ${act.start_time || '-'} - ${act.end_time || '-'}
         </td>
       </tr>
     `
@@ -672,6 +672,8 @@ function calculateDuration(start: string, end: string): number | string {
                   <div class="activity-print-header">
                     <div class="activity-print-shift">Petugas: {{ act.user?.name || '-' }}</div>
                     <div class="activity-print-details">
+                      <span>Tanggal: <b>{{ formatIndoShortDate(act.date) }}</b></span>
+                      <span class="divider">|</span>
                       <span>Waktu: <b>{{ act.start_time || '-' }} - {{ act.end_time || '-' }}</b> ({{ calculateDuration(act.start_time, act.end_time) }} Menit)</span>
                     </div>
                   </div>
