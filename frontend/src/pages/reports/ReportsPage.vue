@@ -4,7 +4,8 @@ import api from '../../lib/axios'
 
 const month = ref(new Date().getMonth() + 1)
 const year = ref(new Date().getFullYear())
-const areaId = ref<number | string>('')
+const dailyAreaId = ref<number | string>('')
+const matrixAreaId = ref<number | string>('')
 const areas = ref<any[]>([])
 
 const loading = ref({
@@ -40,7 +41,8 @@ async function fetchAreas() {
     const { data } = await api.get('/api/v1/areas')
     areas.value = data.data || data
     if (areas.value.length > 0) {
-      areaId.value = areas.value[0].id
+      dailyAreaId.value = areas.value[0].id
+      matrixAreaId.value = areas.value[0].id
     }
   } catch (e: any) {
     showToast('Gagal memuat daftar area: ' + e.message, 'error')
@@ -51,10 +53,9 @@ onMounted(() => {
   fetchAreas()
 })
 
-function getSelectedAreaName(): string {
-  if (!areaId.value) return ''
-  // Use == for loose comparison since areaId may be string or number
-  const found = areas.value.find(a => a.id == areaId.value)
+function getAreaName(id: number | string): string {
+  if (!id) return ''
+  const found = areas.value.find(a => a.id == id)
   return found?.name || 'Unknown'
 }
 
@@ -63,12 +64,12 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
   try {
     const params: any = { month: month.value, year: year.value }
     if (type === 'matrix-excel') {
-      if (!areaId.value) {
+      if (!matrixAreaId.value) {
         showToast('Pilih area terlebih dahulu untuk mengunduh Laporan Matrix.', 'error')
         loading.value[type] = false
         return
       }
-      params.area_id = areaId.value
+      params.area_id = matrixAreaId.value
     }
     
     // Map type to actual backend route
@@ -148,14 +149,14 @@ function getFormattedPeriodText(): string {
 }
 
 async function fetchDailyChecklist() {
-  if (!areaId.value) {
+  if (!dailyAreaId.value) {
     showToast('Pilih area terlebih dahulu untuk melihat pratinjau.', 'error')
     return
   }
   loadingDaily.value = true
   try {
     const params: any = {
-      area_id: areaId.value
+      area_id: dailyAreaId.value
     }
     
     if (filterMode.value === 'today') {
@@ -187,7 +188,7 @@ function printDailyReport() {
 function exportDailyToExcel() {
   if (dailyActivities.value.length === 0) return
   
-  const areaName = getSelectedAreaName()
+  const areaName = getAreaName(dailyAreaId.value)
   const formattedIndoDateStr = getFormattedPeriodText()
   
   let html = `
@@ -403,58 +404,6 @@ function calculateDuration(start: string, end: string): number | string {
       </div>
     </div>
 
-    <!-- Filter Periode Card (Glassmorphic design) -->
-    <div class="card filter-card glass-card mb-6 animate-slide-up">
-      <h2 class="filter-title">
-        <span class="title-icon-wrapper">📅</span> Pilih Periode Laporan
-      </h2>
-      <div class="filter-row">
-        <div class="form-group filter-field">
-          <label class="label"><span class="input-icon">🗓️</span> Bulan</label>
-          <div class="select-wrapper">
-            <select v-model="month" class="input select-input">
-              <option :value="1">Januari</option>
-              <option :value="2">Februari</option>
-              <option :value="3">Maret</option>
-              <option :value="4">April</option>
-              <option :value="5">Mei</option>
-              <option :value="6">Juni</option>
-              <option :value="7">Juli</option>
-              <option :value="8">Agustus</option>
-              <option :value="9">September</option>
-              <option :value="10">Oktober</option>
-              <option :value="11">November</option>
-              <option :value="12">Desember</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="form-group filter-field">
-          <label class="label"><span class="input-icon">📆</span> Tahun</label>
-          <div class="select-wrapper">
-            <select v-model="year" class="input select-input">
-              <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
-              <option :value="new Date().getFullYear()">{{ new Date().getFullYear() }}</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group filter-field area-select-field">
-          <label class="label">
-            <span class="input-icon">🏢</span> Pilih Ruangan/Area 
-            <span class="label-hint">(Ceklist & Excel)</span>
-          </label>
-          <div class="select-wrapper">
-            <select v-model="areaId" class="input select-input" :disabled="areas.length === 0">
-              <option value="">Pilih Area...</option>
-              <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
     <!-- Export Grid Layout (Premium Cards) -->
     <div class="export-grid mb-6">
       <!-- Daily Checklist Card (Featured) -->
@@ -465,12 +414,25 @@ function calculateDuration(start: string, end: string): number | string {
             <span class="format-badge format-badge-accent">PRATINJAU & PDF</span>
           </div>
           <div class="export-desc">
-            <p>
+            <p class="mb-4">
               Pratinjau visual tabel ceklist kebersihan ruangan beserta foto bukti sebelum/sesudah per hari, serta cetak langsung atau simpan sebagai dokumen PDF.
             </p>
             
-            <div class="form-group mt-4">
-              <label class="label text-xs">Pilih Mode Periode</label>
+            <!-- Pilih Ruangan/Area -->
+            <div class="form-group mb-4">
+              <label class="label text-xs font-semibold">
+                <span class="input-icon">🏢</span> Pilih Ruangan/Area
+              </label>
+              <div class="select-wrapper">
+                <select v-model="dailyAreaId" class="input select-input text-xs" :disabled="areas.length === 0">
+                  <option value="">Pilih Area...</option>
+                  <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="label text-xs font-semibold">Pilih Mode Periode</label>
               <!-- iOS Style Pill Tabs -->
               <div class="filter-mode-tabs mb-4">
                 <button 
@@ -550,15 +512,15 @@ function calculateDuration(start: string, end: string): number | string {
         
         <div class="export-card-footer mt-4">
           <div class="matrix-info mb-3">
-            <div class="selected-area-badge" v-if="areaId">
+            <div class="selected-area-badge" v-if="dailyAreaId">
               <span class="badge-dot"></span>
-              <span>Lokasi terpilih: <b>{{ getSelectedAreaName() }}</b></span>
+              <span>Lokasi terpilih: <b>{{ getAreaName(dailyAreaId) }}</b></span>
             </div>
             <div class="area-warning-badge" v-else>
               ⚠️ Silakan pilih area/lokasi terlebih dahulu.
             </div>
           </div>
-          <button class="btn btn-primary export-btn" @click="fetchDailyChecklist" :disabled="loadingDaily || !areaId">
+          <button class="btn btn-primary export-btn" @click="fetchDailyChecklist" :disabled="loadingDaily || !dailyAreaId">
             <span v-if="loadingDaily" class="spinner-small"></span>
             <span>{{ loadingDaily ? 'Memproses...' : 'Lihat Ceklist Harian (Pratinjau)' }}</span>
           </button>
@@ -573,17 +535,62 @@ function calculateDuration(start: string, end: string): number | string {
             <span class="format-badge format-badge-success">EXCEL</span>
           </div>
           <div class="export-desc">
-            <p>
+            <p class="mb-4">
               Mengekspor matriks visual tanda ceklist (v) per item kebersihan, per shift aktif harian (1 & 2), lengkap dengan nama ruangan, tanda tangan paraf petugas/PJ, dan penanggung jawab unit sesuai format cetak fisik RS JEC Orbita.
             </p>
+
+            <!-- Pilih Ruangan/Area -->
+            <div class="form-group mb-4">
+              <label class="label text-xs font-semibold">
+                <span class="input-icon">🏢</span> Pilih Ruangan/Area
+              </label>
+              <div class="select-wrapper">
+                <select v-model="matrixAreaId" class="input select-input text-xs" :disabled="areas.length === 0">
+                  <option value="">Pilih Area...</option>
+                  <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Bulan & Tahun Selectors -->
+            <div class="inline-flex-container">
+              <div class="flex-field">
+                <label class="label text-xs font-semibold"><span class="input-icon">🗓️</span> Bulan</label>
+                <div class="select-wrapper">
+                  <select v-model="month" class="input select-input text-xs">
+                    <option :value="1">Januari</option>
+                    <option :value="2">Februari</option>
+                    <option :value="3">Maret</option>
+                    <option :value="4">April</option>
+                    <option :value="5">Mei</option>
+                    <option :value="6">Juni</option>
+                    <option :value="7">Juli</option>
+                    <option :value="8">Agustus</option>
+                    <option :value="9">September</option>
+                    <option :value="10">Oktober</option>
+                    <option :value="11">November</option>
+                    <option :value="12">Desember</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex-field year-flex-field">
+                <label class="label text-xs font-semibold"><span class="input-icon">📆</span> Tahun</label>
+                <div class="select-wrapper">
+                  <select v-model="year" class="input select-input text-xs">
+                    <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
+                    <option :value="new Date().getFullYear()">{{ new Date().getFullYear() }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         
         <div class="export-card-footer mt-4">
           <div class="matrix-info mb-3">
-            <div class="selected-area-badge" v-if="areaId">
+            <div class="selected-area-badge" v-if="matrixAreaId">
               <span class="badge-dot"></span>
-              <span>Lokasi terpilih: <b>{{ getSelectedAreaName() }}</b></span>
+              <span>Lokasi terpilih: <b>{{ getAreaName(matrixAreaId) }}</b></span>
             </div>
             <div class="area-warning-badge" v-else>
               ⚠️ Silakan pilih area/lokasi terlebih dahulu.
@@ -594,7 +601,7 @@ function calculateDuration(start: string, end: string): number | string {
             </div>
           </div>
           
-          <button class="btn btn-secondary export-btn" @click="downloadReport('matrix-excel')" :disabled="loading['matrix-excel'] || !areaId">
+          <button class="btn btn-secondary export-btn" @click="downloadReport('matrix-excel')" :disabled="loading['matrix-excel'] || !matrixAreaId">
             <span v-if="loading['matrix-excel']" class="spinner-small"></span>
             <span>{{ loading['matrix-excel'] ? 'Memproses...' : 'Unduh Matrix Excel (.xls)' }}</span>
           </button>
@@ -626,7 +633,7 @@ function calculateDuration(start: string, end: string): number | string {
                     <table class="meta-print-table">
                       <tr>
                         <td>Lokasi / Area</td>
-                        <td>: <b>{{ getSelectedAreaName() }}</b></td>
+                        <td>: <b>{{ getAreaName(dailyAreaId) }}</b></td>
                       </tr>
                       <tr>
                         <td>Periode</td>

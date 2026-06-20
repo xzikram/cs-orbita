@@ -16,7 +16,8 @@ const auditorUnit = ref('')
 
 const month = ref(new Date().getMonth() + 1)
 const year = ref(new Date().getFullYear())
-const areaId = ref<number | string>('')
+const dailyAreaId = ref<number | string>('')
+const matrixAreaId = ref<number | string>('')
 const areas = ref<any[]>([])
 
 const loading = ref({
@@ -128,16 +129,17 @@ async function fetchAreas() {
     })
     areas.value = data.data || []
     if (areas.value.length > 0) {
-      areaId.value = areas.value[0].id
+      dailyAreaId.value = areas.value[0].id
+      matrixAreaId.value = areas.value[0].id
     }
   } catch (e: any) {
     showToast('Gagal memuat daftar area: ' + e.message, 'error')
   }
 }
 
-function getSelectedAreaName(): string {
-  if (!areaId.value) return ''
-  const found = areas.value.find(a => a.id == areaId.value)
+function getAreaName(id: number | string): string {
+  if (!id) return ''
+  const found = areas.value.find(a => a.id == id)
   return found?.name || 'Unknown'
 }
 
@@ -146,12 +148,12 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
   try {
     const params: any = { month: month.value, year: year.value }
     if (type === 'matrix-excel') {
-      if (!areaId.value) {
+      if (!matrixAreaId.value) {
         showToast('Pilih area terlebih dahulu untuk mengunduh Laporan Matrix.', 'error')
         loading.value[type] = false
         return
       }
-      params.area_id = areaId.value;
+      params.area_id = matrixAreaId.value;
     }
 
     const routeMap: Record<string, string> = {
@@ -225,13 +227,13 @@ function getFormattedPeriodText(): string {
 }
 
 async function fetchDailyChecklist() {
-  if (!areaId.value) {
+  if (!dailyAreaId.value) {
     showToast('Pilih area terlebih dahulu untuk melihat pratinjau.', 'error')
     return
   }
   loadingDaily.value = true
   try {
-    const params: any = { area_id: areaId.value }
+    const params: any = { area_id: dailyAreaId.value }
     
     if (filterMode.value === 'today') {
       params.date = new Date().toISOString().split('T')[0]
@@ -265,7 +267,7 @@ function printDailyReport() {
 function exportDailyToExcel() {
   if (dailyActivities.value.length === 0) return
   
-  const areaName = getSelectedAreaName()
+  const areaName = getAreaName(dailyAreaId.value)
   const formattedIndoDateStr = getFormattedPeriodText()
   
   let html = `
@@ -478,40 +480,9 @@ function logoutAudit() {
               <span class="auditor-unit">Unit: {{ auditorUnit }}</span>
             </div>
           </div>
-          <button class="btn btn-secondary btn-sm" @click="logoutAudit">Keluar Sesi</button>
+          <button class="btn btn-secondary btn-sm" @click="logoutAudit">Kembali Sesi</button>
         </div>
       </header>
-
-      <!-- Period Filter Card -->
-      <section class="card filter-card mb-6 animate-slide-up">
-        <h2 class="filter-title">
-          <span>📅</span> Pilih Periode Laporan & Area
-        </h2>
-        <div class="filter-row">
-          <div class="form-group filter-field">
-            <label class="label">Bulan</label>
-            <select v-model="month" class="input select-input">
-              <option v-for="(name, index) in monthNames" :key="index" :value="Number(index)">{{ name }}</option>
-            </select>
-          </div>
-          
-          <div class="form-group filter-field">
-            <label class="label">Tahun</label>
-            <select v-model="year" class="input select-input">
-              <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
-              <option :value="new Date().getFullYear()">{{ new Date().getFullYear() }}</option>
-            </select>
-          </div>
-
-          <div class="form-group filter-field">
-            <label class="label">Pilih Ruangan/Area</label>
-            <select v-model="areaId" class="input select-input" :disabled="areas.length === 0">
-              <option value="">Pilih Area...</option>
-              <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
-            </select>
-          </div>
-        </div>
-      </section>
 
       <div class="export-grid">
         <!-- Daily Checklist Card -->
@@ -522,8 +493,19 @@ function logoutAudit() {
               <span class="format-badge preview">PRATINJAU & PDF</span>
             </div>
             <div class="export-desc">
-              <p>Pratinjau visual tabel ceklist kebersihan ruangan beserta foto bukti sebelum/sesudah per hari, cetak PDF, atau simpan file.</p>
+              <p class="mb-4">Pratinjau visual tabel ceklist kebersihan ruangan beserta foto bukti sebelum/sesudah per hari, cetak PDF, atau simpan file.</p>
               
+              <!-- Pilih Ruangan/Area -->
+              <div class="form-group mb-4">
+                <label class="label text-xs font-semibold">Pilih Ruangan/Area</label>
+                <div class="select-wrapper">
+                  <select v-model="dailyAreaId" class="input select-input text-xs" :disabled="areas.length === 0">
+                    <option value="">Pilih Area...</option>
+                    <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
+                  </select>
+                </div>
+              </div>
+
               <div class="form-group mt-4">
                 <label class="label text-xs">Pilih Mode Periode</label>
                 <div class="filter-mode-tabs mb-3">
@@ -531,11 +513,11 @@ function logoutAudit() {
                   <button type="button" class="tab-btn" :class="{ active: filterMode === 'month' }" @click="filterMode = 'month'">1 Bulan</button>
                   <button type="button" class="tab-btn" :class="{ active: filterMode === 'range' }" @click="filterMode = 'range'">Rentang</button>
                 </div>
-
+ 
                 <div v-if="filterMode === 'today'" class="mode-input-container">
                   <span class="text-xs text-muted-fg">Hari ini: <b>{{ formatIndoDate(new Date().toISOString().split('T')[0]) }}</b></span>
                 </div>
-
+ 
                 <div v-else-if="filterMode === 'month'" class="mode-input-container inline-flex-container">
                   <div class="flex-field">
                     <select v-model="selectedDailyMonth" class="input select-input text-xs">
@@ -549,7 +531,7 @@ function logoutAudit() {
                     </select>
                   </div>
                 </div>
-
+ 
                 <div v-else-if="filterMode === 'range'" class="mode-input-container inline-flex-container">
                   <input type="date" v-model="startDate" class="input text-xs" />
                   <input type="date" v-model="endDate" class="input text-xs" />
@@ -558,13 +540,13 @@ function logoutAudit() {
             </div>
           </div>
           <div class="export-card-footer">
-            <button class="btn btn-secondary export-btn" @click="fetchDailyChecklist" :disabled="loadingDaily || !areaId">
+            <button class="btn btn-secondary export-btn" @click="fetchDailyChecklist" :disabled="loadingDaily || !dailyAreaId">
               <span v-if="loadingDaily" class="spinner-small"></span>
               <span>{{ loadingDaily ? 'Memuat...' : 'Lihat Ceklist Harian' }}</span>
             </button>
           </div>
         </div>
-
+ 
         <!-- Matrix Excel Report -->
         <div class="export-card animate-slide-up stagger-2">
           <div class="export-card-body">
@@ -573,11 +555,43 @@ function logoutAudit() {
               <span class="format-badge xls">EXCEL</span>
             </div>
             <div class="export-desc">
-              <p>Unduh matriks ceklist (v) per item kebersihan dan shift harian (1 & 2) lengkap dengan paraf petugas & PJ unit sesuai format fisik RS JEC Orbita.</p>
+              <p class="mb-4">Unduh matriks ceklist (v) per item kebersihan dan shift harian (1 & 2) lengkap dengan paraf petugas & PJ unit sesuai format fisik RS JEC Orbita.</p>
+              
+              <!-- Pilih Ruangan/Area -->
+              <div class="form-group mb-4">
+                <label class="label text-xs font-semibold">Pilih Ruangan/Area</label>
+                <div class="select-wrapper">
+                  <select v-model="matrixAreaId" class="input select-input text-xs" :disabled="areas.length === 0">
+                    <option value="">Pilih Area...</option>
+                    <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Bulan & Tahun Selectors -->
+              <div class="inline-flex-container">
+                <div class="flex-field">
+                  <label class="label text-xs font-semibold">Bulan</label>
+                  <div class="select-wrapper">
+                    <select v-model="month" class="input select-input text-xs">
+                      <option v-for="(name, index) in monthNames" :key="index" :value="Number(index)">{{ name }}</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="flex-field">
+                  <label class="label text-xs font-semibold">Tahun</label>
+                  <div class="select-wrapper">
+                    <select v-model="year" class="input select-input text-xs">
+                      <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
+                      <option :value="new Date().getFullYear()">{{ new Date().getFullYear() }}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="export-card-footer">
-            <button class="btn btn-primary export-btn" @click="downloadReport('matrix-excel')" :disabled="loading['matrix-excel'] || !areaId">
+            <button class="btn btn-primary export-btn" @click="downloadReport('matrix-excel')" :disabled="loading['matrix-excel'] || !matrixAreaId">
               <span v-if="loading['matrix-excel']" class="spinner-small"></span>
               <span>Unduh Matrix Excel (.xls)</span>
             </button>
@@ -645,7 +659,7 @@ function logoutAudit() {
                     <table class="meta-print-table">
                       <tr>
                         <td>Lokasi / Area</td>
-                        <td>: <b>{{ getSelectedAreaName() }}</b></td>
+                        <td>: <b>{{ getAreaName(dailyAreaId) }}</b></td>
                       </tr>
                       <tr>
                         <td>Periode</td>
