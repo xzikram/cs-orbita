@@ -803,12 +803,17 @@ function calculateDuration(start: string, end: string): number | string {
 }
 
 .header-icon-badge {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
   background: hsl(var(--primary) / 0.15);
   font-size: 2rem;
-  padding: 0.5rem;
   border-radius: 0.75rem;
   border: 1px solid hsl(var(--primary) / 0.3);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
 .page-title {
@@ -1271,6 +1276,82 @@ function calculateDuration(start: string, end: string): number | string {
   .year-flex-field {
     width: 100% !important;
   }
+}
+
+/* ===== Utility Classes (Tailwind Helpers) ===== */
+.flex {
+  display: flex !important;
+}
+.items-center {
+  align-items: center !important;
+}
+.gap-2 {
+  gap: 0.5rem !important;
+}
+.gap-3 {
+  gap: 0.75rem !important;
+}
+.gap-4 {
+  gap: 1rem !important;
+}
+.mb-1 { margin-bottom: 0.25rem !important; }
+.mb-3 { margin-bottom: 0.75rem !important; }
+.mb-4 { margin-bottom: 1rem !important; }
+.mb-6 { margin-bottom: 1.5rem !important; }
+.mt-2 { margin-top: 0.5rem !important; }
+.mt-4 { margin-top: 1rem !important; }
+.m-0 { margin: 0 !important; }
+.font-semibold {
+  font-weight: 600 !important;
+}
+.font-bold {
+  font-weight: 700 !important;
+}
+.font-medium {
+  font-weight: 500 !important;
+}
+.font-mono {
+  font-family: var(--font-mono), monospace !important;
+}
+.text-xs {
+  font-size: 0.75rem !important;
+}
+.text-sm {
+  font-size: 0.875rem !important;
+}
+.text-right {
+  text-align: right !important;
+}
+.text-left {
+  text-align: left !important;
+}
+.text-center {
+  text-align: center !important;
+}
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground)) !important;
+}
+.text-foreground {
+  color: hsl(var(--foreground)) !important;
+}
+.text-muted-fg {
+  color: hsl(var(--muted-foreground)) !important;
+}
+.text-warning {
+  color: hsl(var(--warning)) !important;
+}
+.block {
+  display: block !important;
+}
+.uppercase {
+  text-transform: uppercase !important;
+}
+.tracking-wider {
+  letter-spacing: 0.05em !important;
+}
+.btn-sm {
+  padding: 0.375rem 0.75rem !important;
+  font-size: 0.75rem !important;
 }
 </style>
 
