@@ -108,6 +108,12 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('../pages/admin/ManageAuditAccessPage.vue'),
         meta: { roles: ['administrator'] },
       },
+      {
+        path: 'admin/backup-restore',
+        name: 'admin-backup-restore',
+        component: () => import('../pages/admin/BackupRestorePage.vue'),
+        meta: { roles: ['administrator'] },
+      },
       // Management
       {
         path: 'kpi',

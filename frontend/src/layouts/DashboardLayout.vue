@@ -117,6 +117,7 @@ const menuItems = computed(() => {
       { name: 'admin-users', label: 'Pengguna', icon: '👥', group: 'Admin' },
       { name: 'admin-areas', label: 'Kelola Area', icon: '🏢', group: 'Admin' },
       { name: 'admin-audit-access', label: 'Kelola Akses Audit', icon: '🔑', group: 'Admin' },
+      { name: 'admin-backup-restore', label: 'Backup & Restore', icon: '💾', group: 'Admin' },
     )
   }
 

@@ -128,6 +128,14 @@ Route::prefix('v1')->group(function () {
             Route::put('/admin/audit-sessions/{id}/revoke', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'revokeSession']);
             Route::get('/admin/audit-logs', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'getAccessLogs']);
 
+            // Database Backup & Restore Management
+            Route::get('/admin/backups', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'index']);
+            Route::post('/admin/backups', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'store']);
+            Route::get('/admin/backups/{filename}', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'download']);
+            Route::delete('/admin/backups/{filename}', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'destroy']);
+            Route::post('/admin/backups/{filename}/restore', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'restoreFromFile']);
+            Route::post('/admin/backups/restore', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'uploadAndRestore']);
+
             // Master data write
             Route::post('/buildings', [MasterDataController::class, 'storeBuilding']);
             Route::put('/buildings/{building}', [MasterDataController::class, 'updateBuilding']);
