@@ -106,7 +106,7 @@ function confirmRestoreFromFile(filename: string) {
 
 function confirmRestoreFromUpload() {
   if (!selectedFile.value) {
-    showToast('Pilih file SQL terlebih dahulu.', 'error')
+    showToast('Pilih file ZIP terlebih dahulu.', 'error')
     return
   }
   restoreTarget.value = 'upload'
@@ -131,7 +131,7 @@ async function executeRestore() {
       await api.post(`/api/v1/admin/backups/${targetFilename.value}/restore`)
       showToast('Database berhasil dipulihkan dari cadangan lokal!')
     } else if (restoreTarget.value === 'upload') {
-      // Restore from uploaded SQL
+      // Restore from uploaded ZIP
       const formData = new FormData()
       formData.append('backup_file', selectedFile.value!)
       await api.post('/api/v1/admin/backups/restore', formData, {
@@ -139,11 +139,11 @@ async function executeRestore() {
           'Content-Type': 'multipart/form-data',
         },
       })
-      showToast('Database berhasil dipulihkan dari file yang diupload!')
+      showToast('Database dan file berhasil dipulihkan dari file yang diupload!')
       selectedFile.value = null
     }
   } catch (err: any) {
-    showToast(err.response?.data?.message || 'Proses pemulihan gagal. Cek integritas file SQL Anda.', 'error')
+    showToast(err.response?.data?.message || 'Proses pemulihan gagal. Cek integritas file ZIP Anda.', 'error')
   } finally {
     isRestoring.value = false
     confirmTextInput.value = ''
@@ -176,8 +176,8 @@ function onFileChange(e: Event) {
 }
 
 function handleFileSelect(file: File) {
-  if (file.name.split('.').pop()?.toLowerCase() !== 'sql') {
-    showToast('Hanya mendukung file dengan format .sql', 'error')
+  if (file.name.split('.').pop()?.toLowerCase() !== 'zip') {
+    showToast('Hanya mendukung file dengan format .zip', 'error')
     selectedFile.value = null
     return
   }
@@ -243,7 +243,7 @@ onMounted(() => {
           <div class="action-icon">💾</div>
           <h3 class="card-heading">Generate Cadangan Baru</h3>
           <p class="card-desc text-muted-fg mb-4">
-            Ekspor seluruh struktur database, tabel, data pengguna, log ceklist kebersihan, keluhan, dan log sistem ke dalam satu file SQL terenkripsi secara otomatis.
+            Ekspor seluruh database serta seluruh berkas fisik foto kegiatan kebersihan & komplain ke dalam satu file arsip ZIP secara otomatis.
           </p>
           <button 
             class="btn btn-primary btn-block" 
@@ -251,7 +251,7 @@ onMounted(() => {
             @click="generateBackup"
           >
             <span v-if="isBackingUp" class="spinner-small mr-2"></span>
-            <span>{{ isBackingUp ? 'Membuat Cadangan...' : 'Cadangkan Seluruh Data (SQL)' }}</span>
+            <span>{{ isBackingUp ? 'Membuat Cadangan...' : 'Cadangkan Seluruh Data (ZIP)' }}</span>
           </button>
         </div>
       </div>
@@ -260,9 +260,9 @@ onMounted(() => {
       <div class="card glass-card">
         <div class="card-body">
           <div class="action-icon">📤</div>
-          <h3 class="card-heading">Upload & Restore Database</h3>
+          <h3 class="card-heading">Upload & Restore Backup (ZIP)</h3>
           <p class="card-desc text-muted-fg mb-4">
-            Pulihkan data dengan mengunggah file backup `.sql` eksternal dari komputer Anda. <strong class="text-destructive">Perhatian: Seluruh data saat ini akan terhapus.</strong>
+            Pulihkan data dengan mengunggah file backup `.zip` eksternal dari komputer Anda. <strong class="text-destructive">Perhatian: Seluruh data saat ini akan terhapus.</strong>
           </p>
           
           <!-- Drag & Drop Zone -->
@@ -274,10 +274,10 @@ onMounted(() => {
             @drop="onDrop"
           >
             <div v-if="!selectedFile" class="drop-zone-prompt">
-              <span>拖 📂 Drag & drop file .sql di sini atau </span>
+              <span>拖 📂 Drag & drop file .zip di sini atau </span>
               <label class="file-label">
                 Pilih File
-                <input type="file" class="file-input-hidden" accept=".sql" @change="onFileChange" />
+                <input type="file" class="file-input-hidden" accept=".zip" @change="onFileChange" />
               </label>
             </div>
             
@@ -338,7 +338,7 @@ onMounted(() => {
                 <div class="action-buttons-group">
                   <button 
                     class="btn btn-sm btn-secondary flex-1" 
-                    title="Download File SQL"
+                    title="Download File ZIP"
                     :disabled="isRestoring || isBackingUp" 
                     @click="downloadBackup(backup.filename)"
                   >
@@ -372,9 +372,9 @@ onMounted(() => {
     <div v-if="isRestoring" class="restore-overlay">
       <div class="restore-progress-card animate-scale-up">
         <div class="spinner-pulse mb-4"></div>
-        <h3>Sedang Memulihkan Database...</h3>
+        <h3>Sedang Memulihkan Database & File...</h3>
         <p class="text-muted-fg mt-2 text-center text-sm">
-          Sistem sedang memproses database dump. Proses ini akan menimpa seluruh tabel, data transaksi kebersihan, log approval, dan user. Jangan keluar dari halaman atau mematikan koneksi server!
+          Sistem sedang mengekstrak file ZIP cadangan. Proses ini akan menimpa seluruh tabel, data transaksi kebersihan, log approval, user, dan file fisik foto kegiatan. Jangan keluar dari halaman atau mematikan koneksi server!
         </p>
       </div>
     </div>

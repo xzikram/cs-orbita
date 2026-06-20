@@ -19,7 +19,7 @@ class BackupController extends Controller
         $backups = [];
 
         foreach ($files as $file) {
-            if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') {
+            if (pathinfo($file, PATHINFO_EXTENSION) === 'zip') {
                 $backups[] = [
                     'filename' => basename($file),
                     'size' => Storage::disk('local')->size($file),
@@ -47,14 +47,50 @@ class BackupController extends Controller
 
         try {
             $sql = $this->generateSqlDump();
-            $filename = 'backup_' . date('Y_m_d_His') . '.sql';
+            $filename = 'backup_' . date('Y_m_d_His') . '.zip';
             
             // Ensure directory exists
             if (!Storage::disk('local')->exists('backups')) {
                 Storage::disk('local')->makeDirectory('backups');
             }
 
-            Storage::disk('local')->put('backups/' . $filename, $sql);
+            // Create temporary zip file
+            $tempZipPath = tempnam(sys_get_temp_dir(), 'backup_zip');
+            
+            $zip = new \ZipArchive();
+            if ($zip->open($tempZipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+                // Add database.sql
+                $zip->addFromString('database.sql', $sql);
+                
+                // Add public files recursively
+                $publicPath = storage_path('app/public');
+                if (is_dir($publicPath)) {
+                    $files = new \RecursiveIteratorIterator(
+                        new \RecursiveDirectoryIterator($publicPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+                        \RecursiveIteratorIterator::LEAVES_ONLY
+                    );
+                    
+                    foreach ($files as $name => $file) {
+                        if (!$file->isDir()) {
+                            $filePath = $file->getRealPath();
+                            $relativePath = 'public/' . substr($filePath, strlen($publicPath) + 1);
+                            $zip->addFile($filePath, $relativePath);
+                        }
+                    }
+                }
+                
+                $zip->close();
+            } else {
+                throw new \Exception('Gagal membuat file ZIP backup.');
+            }
+
+            // Put stream to Laravel storage disk
+            $stream = fopen($tempZipPath, 'r');
+            Storage::disk('local')->put('backups/' . $filename, $stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+            @unlink($tempZipPath);
 
             return response()->json([
                 'message' => 'Backup berhasil dibuat.',
@@ -77,8 +113,24 @@ class BackupController extends Controller
         // Prevent path traversal
         $filename = basename($filename);
         $path = storage_path('app/backups/' . $filename);
+
+        // If the storage disk is faked or the file doesn't exist on the real path, copy it from Storage first
         if (!file_exists($path)) {
-            abort(404, 'File backup tidak ditemukan.');
+            $filePath = 'backups/' . $filename;
+            if (!Storage::disk('local')->exists($filePath)) {
+                abort(404, 'File backup tidak ditemukan.');
+            }
+            
+            // Create directories if needed
+            if (!file_exists(dirname($path))) {
+                mkdir(dirname($path), 0777, true);
+            }
+            
+            $stream = Storage::disk('local')->readStream($filePath);
+            file_put_contents($path, $stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
         }
 
         return response()->download($path);
@@ -98,6 +150,12 @@ class BackupController extends Controller
 
         Storage::disk('local')->delete($filePath);
 
+        // Also delete from real local path if it was cached for download
+        $localPath = storage_path('app/backups/' . $filename);
+        if (file_exists($localPath)) {
+            @unlink($localPath);
+        }
+
         return response()->json(['message' => 'Backup berhasil dihapus.']);
     }
 
@@ -114,10 +172,18 @@ class BackupController extends Controller
         }
 
         try {
-            $sql = Storage::disk('local')->get($filePath);
-            $this->executeSqlDump($sql);
+            // Copy from Laravel Storage to local temp path for Zip extraction
+            $tempZipPath = tempnam(sys_get_temp_dir(), 'restore_zip');
+            $stream = Storage::disk('local')->readStream($filePath);
+            file_put_contents($tempZipPath, $stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
 
-            return response()->json(['message' => 'Database berhasil direstore dari file ' . $filename]);
+            $this->performRestoreFromZip($tempZipPath);
+            @unlink($tempZipPath);
+
+            return response()->json(['message' => 'Database dan file berhasil direstore dari file ' . $filename]);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Gagal melakukan restore: ' . $e->getMessage()], 500);
         }
@@ -135,18 +201,104 @@ class BackupController extends Controller
         $file = $request->file('backup_file');
         
         // Check extension
-        if ($file->getClientOriginalExtension() !== 'sql') {
-            return response()->json(['message' => 'Format file tidak valid. Harus berupa file .sql.'], 400);
+        if ($file->getClientOriginalExtension() !== 'zip') {
+            return response()->json(['message' => 'Format file tidak valid. Harus berupa file .zip.'], 400);
         }
 
         try {
-            $sql = file_get_contents($file->getRealPath());
-            $this->executeSqlDump($sql);
+            $zipFilePath = $file->getRealPath();
+            $this->performRestoreFromZip($zipFilePath);
 
-            return response()->json(['message' => 'Database berhasil direstore dari file yang diupload.']);
+            return response()->json(['message' => 'Database dan file berhasil direstore dari file yang diupload.']);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Gagal melakukan restore: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Perform restore from ZIP archive
+     */
+    private function performRestoreFromZip($zipFilePath)
+    {
+        // Increase memory and time limits
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(300);
+
+        // Create temp folder
+        $tempPath = storage_path('app/temp_restore_' . time() . '_' . uniqid());
+        if (!file_exists($tempPath)) {
+            mkdir($tempPath, 0777, true);
+        }
+
+        try {
+            $zip = new \ZipArchive();
+            if ($zip->open($zipFilePath) === true) {
+                $zip->extractTo($tempPath);
+                $zip->close();
+            } else {
+                throw new \Exception('Gagal membuka file ZIP backup.');
+            }
+
+            // 1. Restore database from database.sql
+            $sqlPath = $tempPath . '/database.sql';
+            if (!file_exists($sqlPath)) {
+                throw new \Exception('File database.sql tidak ditemukan dalam ZIP backup.');
+            }
+            $sql = file_get_contents($sqlPath);
+            $this->executeSqlDump($sql);
+
+            // 2. Restore public files from public/ directory
+            $backupPublicPath = $tempPath . '/public';
+            if (is_dir($backupPublicPath)) {
+                $destPublicPath = storage_path('app/public');
+                $this->recursiveCopy($backupPublicPath, $destPublicPath);
+            }
+
+            // Cleanup temp
+            $this->recursiveDelete($tempPath);
+        } catch (\Exception $e) {
+            $this->recursiveDelete($tempPath);
+            throw $e;
+        }
+    }
+
+    /**
+     * Recursively copy files and directories
+     */
+    private function recursiveCopy($src, $dst)
+    {
+        if (!is_dir($src)) {
+            return;
+        }
+        if (!file_exists($dst)) {
+            mkdir($dst, 0777, true);
+        }
+        $dir = opendir($src);
+        while (false !== ($file = readdir($dir))) {
+            if (($file != '.') && ($file != '..')) {
+                if (is_dir($src . '/' . $file)) {
+                    $this->recursiveCopy($src . '/' . $file, $dst . '/' . $file);
+                } else {
+                    copy($src . '/' . $file, $dst . '/' . $file);
+                }
+            }
+        }
+        closedir($dir);
+    }
+
+    /**
+     * Recursively delete directories and files
+     */
+    private function recursiveDelete($dir)
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            (is_dir("$dir/$file")) ? $this->recursiveDelete("$dir/$file") : @unlink("$dir/$file");
+        }
+        return @rmdir($dir);
     }
 
     /**

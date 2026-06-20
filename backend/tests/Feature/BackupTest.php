@@ -39,6 +39,13 @@ class BackupTest extends TestCase
 
     public function test_admin_can_generate_database_backup(): void
     {
+        // Write a test photo to public storage
+        $publicPath = storage_path('app/public');
+        if (!file_exists($publicPath)) {
+            mkdir($publicPath, 0777, true);
+        }
+        file_put_contents($publicPath . '/test_image.jpg', 'fake image content');
+
         $response = $this->actingAs($this->admin)
             ->postJson('/api/v1/admin/backups');
 
@@ -54,85 +61,139 @@ class BackupTest extends TestCase
             ]);
 
         $filename = $response->json('backup.filename');
+        $this->assertStringEndsWith('.zip', $filename);
+        
+        // Assert it exists on faked storage
         Storage::disk('local')->assertExists('backups/' . $filename);
+
+        // Copy from faked disk to verify ZIP contents
+        $tempZipPath = tempnam(sys_get_temp_dir(), 'zip');
+        $stream = Storage::disk('local')->readStream('backups/' . $filename);
+        file_put_contents($tempZipPath, $stream);
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+
+        // Open zip and verify content
+        $zip = new \ZipArchive();
+        $this->assertTrue($zip->open($tempZipPath));
+        $this->assertNotFalse($zip->locateName('database.sql'));
+        $this->assertNotFalse($zip->locateName('public/test_image.jpg'));
+        $zip->close();
+
+        // Clean up
+        @unlink($publicPath . '/test_image.jpg');
+        @unlink($tempZipPath);
     }
 
     public function test_admin_can_list_backups(): void
     {
-        // Put a fake sql file in disk
-        Storage::disk('local')->put('backups/backup_test_123.sql', 'SELECT 1;');
+        // Put a fake zip file in disk
+        Storage::disk('local')->put('backups/backup_test_123.zip', 'fake zip');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/v1/admin/backups');
 
         $response->assertStatus(200)
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.filename', 'backup_test_123.sql');
+            ->assertJsonPath('data.0.filename', 'backup_test_123.zip');
     }
 
     public function test_admin_can_download_backup(): void
     {
-        Storage::disk('local')->put('backups/backup_test_123.sql', 'SELECT 1;');
-        
-        // Laravel storage_path mapping
-        $path = storage_path('app/backups/backup_test_123.sql');
-        if (!file_exists(dirname($path))) {
-            mkdir(dirname($path), 0777, true);
-        }
-        file_put_contents($path, 'SELECT 1;');
+        Storage::disk('local')->put('backups/backup_test_123.zip', 'fake zip');
 
         $response = $this->actingAs($this->admin)
-            ->get('/api/v1/admin/backups/backup_test_123.sql/download');
+            ->get('/api/v1/admin/backups/backup_test_123.zip/download');
 
         $response->assertStatus(200)
-            ->assertHeader('content-disposition', 'attachment; filename=backup_test_123.sql');
+            ->assertHeader('content-disposition', 'attachment; filename=backup_test_123.zip');
             
-        @unlink($path);
+        // Delete locally downloaded cache if any
+        $localPath = storage_path('app/backups/backup_test_123.zip');
+        if (file_exists($localPath)) {
+            @unlink($localPath);
+        }
     }
 
     public function test_admin_can_delete_backup(): void
     {
-        Storage::disk('local')->put('backups/backup_test_123.sql', 'SELECT 1;');
+        Storage::disk('local')->put('backups/backup_test_123.zip', 'fake zip');
 
         $response = $this->actingAs($this->admin)
-            ->deleteJson('/api/v1/admin/backups/backup_test_123.sql');
+            ->deleteJson('/api/v1/admin/backups/backup_test_123.zip');
 
         $response->assertStatus(200)
             ->assertJsonPath('message', 'Backup berhasil dihapus.');
 
-        Storage::disk('local')->assertMissing('backups/backup_test_123.sql');
+        Storage::disk('local')->assertMissing('backups/backup_test_123.zip');
     }
 
     public function test_admin_can_restore_database_from_file(): void
     {
-        // We will put a fake SQL statement to create a temporary table, then assert it runs
-        Storage::disk('local')->put(
-            'backups/backup_restore_test.sql',
-            "DROP TABLE IF EXISTS `test_restore_table`; CREATE TABLE `test_restore_table` (`id` int, `name` varchar(255)); INSERT INTO `test_restore_table` VALUES (1, 'Hello');"
-        );
+        // Create a fake zip containing database.sql and a fake public file in temp path
+        $tempZipPath = tempnam(sys_get_temp_dir(), 'zip');
+        $sqlContent = "DROP TABLE IF EXISTS `test_restore_table`; CREATE TABLE `test_restore_table` (`id` int, `name` varchar(255)); INSERT INTO `test_restore_table` VALUES (1, 'Hello Zip');";
+        
+        $zip = new \ZipArchive();
+        if ($zip->open($tempZipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            $zip->addFromString('database.sql', $sqlContent);
+            $zip->addFromString('public/restored_image.jpg', 'restored image content');
+            $zip->close();
+        }
+
+        // Put the zip into the faked disk
+        Storage::disk('local')->put('backups/backup_restore_test.zip', file_get_contents($tempZipPath));
+        @unlink($tempZipPath);
+
+        // Delete restored_image.jpg if it exists before restore
+        $restoredImagePath = storage_path('app/public/restored_image.jpg');
+        @unlink($restoredImagePath);
 
         $response = $this->actingAs($this->admin)
-            ->postJson('/api/v1/admin/backups/backup_restore_test.sql/restore');
+            ->postJson('/api/v1/admin/backups/backup_restore_test.zip/restore');
 
         $response->assertStatus(200)
-            ->assertJsonPath('message', 'Database berhasil direstore dari file backup_restore_test.sql');
+            ->assertJsonPath('message', 'Database dan file berhasil direstore dari file backup_restore_test.zip');
 
         // Check if the table was created and has data
-        $result = \Illuminate\Support\Facades\Schema::hasTable('test_restore_table');
-        $this->assertTrue($result);
-
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('test_restore_table'));
         $data = DB::table('test_restore_table')->first();
-        $this->assertEquals('Hello', $data->name);
+        $this->assertEquals('Hello Zip', $data->name);
+
+        // Check if file was restored
+        $this->assertFileExists($restoredImagePath);
+        $this->assertEquals('restored image content', file_get_contents($restoredImagePath));
 
         // Clean up
         \Illuminate\Support\Facades\Schema::dropIfExists('test_restore_table');
+        @unlink($restoredImagePath);
     }
 
     public function test_admin_can_restore_database_from_uploaded_file(): void
     {
-        $sqlContent = "DROP TABLE IF EXISTS `test_upload_table`; CREATE TABLE `test_upload_table` (`id` int, `name` varchar(255)); INSERT INTO `test_upload_table` VALUES (2, 'Uploaded');";
+        // Create a temporary zip file
+        $tempZipPath = tempnam(sys_get_temp_dir(), 'zip');
+        $sqlContent = "DROP TABLE IF EXISTS `test_upload_table`; CREATE TABLE `test_upload_table` (`id` int, `name` varchar(255)); INSERT INTO `test_upload_table` VALUES (2, 'Uploaded Zip');";
         
-        $file = UploadedFile::fake()->createWithContent('backup.sql', $sqlContent);
+        $zip = new \ZipArchive();
+        if ($zip->open($tempZipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            $zip->addFromString('database.sql', $sqlContent);
+            $zip->addFromString('public/uploaded_restored_image.jpg', 'uploaded restored image content');
+            $zip->close();
+        }
+
+        $restoredImagePath = storage_path('app/public/uploaded_restored_image.jpg');
+        @unlink($restoredImagePath);
+
+        // Create UploadedFile instance
+        $file = new UploadedFile(
+            $tempZipPath,
+            'backup.zip',
+            'application/zip',
+            null,
+            true // test mode
+        );
 
         $response = $this->actingAs($this->admin)
             ->postJson('/api/v1/admin/backups/restore', [
@@ -140,17 +201,21 @@ class BackupTest extends TestCase
             ]);
 
         $response->assertStatus(200)
-            ->assertJsonPath('message', 'Database berhasil direstore dari file yang diupload.');
+            ->assertJsonPath('message', 'Database dan file berhasil direstore dari file yang diupload.');
 
-        // Check if the table was created
-        $result = \Illuminate\Support\Facades\Schema::hasTable('test_upload_table');
-        $this->assertTrue($result);
-
+        // Check if table was created
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('test_upload_table'));
         $data = DB::table('test_upload_table')->first();
-        $this->assertEquals('Uploaded', $data->name);
+        $this->assertEquals('Uploaded Zip', $data->name);
+
+        // Check if file was restored
+        $this->assertFileExists($restoredImagePath);
+        $this->assertEquals('uploaded restored image content', file_get_contents($restoredImagePath));
 
         // Clean up
         \Illuminate\Support\Facades\Schema::dropIfExists('test_upload_table');
+        @unlink($restoredImagePath);
+        @unlink($tempZipPath);
     }
 
     public function test_non_admin_cannot_access_backup_endpoints(): void
@@ -167,7 +232,7 @@ class BackupTest extends TestCase
 
         // Non-admin delete backup
         $response = $this->actingAs($this->nonAdmin)
-            ->deleteJson('/api/v1/admin/backups/backup_test.sql');
+            ->deleteJson('/api/v1/admin/backups/backup_test.zip');
         $response->assertStatus(403);
     }
 }
