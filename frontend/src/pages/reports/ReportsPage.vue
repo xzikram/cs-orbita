@@ -447,7 +447,7 @@ function calculateDuration(start: string, end: string): number | string {
 
     <!-- Export Grid Layout -->
     <div class="export-grid">
-      <!-- Monthly CSV Report -->
+      <!-- Monthly CSV Report (Temporarily Hidden)
       <div class="export-card animate-slide-up stagger-1">
         <div class="export-card-body">
           <div class="export-header">
@@ -471,8 +471,9 @@ function calculateDuration(start: string, end: string): number | string {
           </button>
         </div>
       </div>
+      -->
 
-      <!-- Audit CSV Report -->
+      <!-- Audit CSV Report (Temporarily Hidden)
       <div class="export-card animate-slide-up stagger-2">
         <div class="export-card-body">
           <div class="export-header">
@@ -496,6 +497,7 @@ function calculateDuration(start: string, end: string): number | string {
           </button>
         </div>
       </div>
+      -->
 
       <!-- Daily Checklist Card -->
       <div class="export-card export-card-featured animate-slide-up stagger-3">
