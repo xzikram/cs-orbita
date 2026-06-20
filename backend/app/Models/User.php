@@ -72,6 +72,16 @@ class User extends Authenticatable
         return $this->hasMany(LoginHistory::class);
     }
 
+    public function auditLinks(): HasMany
+    {
+        return $this->hasMany(AuditLink::class, 'created_by');
+    }
+
+    public function approvedSessions(): HasMany
+    {
+        return $this->hasMany(AuditSession::class, 'approved_by');
+    }
+
     // Scopes
     public function scopeActive($query)
     {

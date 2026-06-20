@@ -102,6 +102,12 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('../pages/admin/AreasPage.vue'),
         meta: { roles: ['administrator'] },
       },
+      {
+        path: 'admin/audit-access',
+        name: 'admin-audit-access',
+        component: () => import('../pages/admin/ManageAuditAccessPage.vue'),
+        meta: { roles: ['administrator'] },
+      },
       // Management
       {
         path: 'kpi',
@@ -145,6 +151,18 @@ export const routes: RouteRecordRaw[] = [
     path: '/tv',
     name: 'tv-dashboard',
     component: () => import('../pages/tv/TvDashboardPage.vue'),
+  },
+
+  // ===== AUDITOR GUEST ACCESS =====
+  {
+    path: '/audit-access/:linkUuid',
+    name: 'audit-gateway',
+    component: () => import('../pages/audit/AuditGatewayPage.vue'),
+  },
+  {
+    path: '/audit-reports/:sessionUuid',
+    name: 'audit-reports',
+    component: () => import('../pages/audit/AuditReportsPage.vue'),
   },
 
   // ===== FALLBACK =====

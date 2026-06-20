@@ -23,6 +23,17 @@ Route::prefix('v1')->group(function () {
     // Auth (public)
     Route::post('/auth/login', [AuthController::class, 'login']);
 
+    // Public Audit Links (Auditor Guest Access)
+    Route::get('/public/audit-link/{uuid}', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'verifyLink']);
+    Route::post('/public/audit-link/{uuid}/session', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'requestSession']);
+    Route::get('/public/audit-session/{sessionUuid}', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'checkSessionStatus']);
+    Route::post('/public/audit-logs', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'logAccess']);
+    Route::get('/public/audit-reports/cleaning', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'exportMonthly']);
+    Route::get('/public/audit-reports/audits', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'exportAudit']);
+    Route::get('/public/audit-reports/matrix-excel', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'exportMatrix']);
+    Route::get('/public/areas', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'getAreas']);
+    Route::get('/public/activities', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'getActivities']);
+
     // Auth (protected)
     Route::middleware('auth:sanctum')->group(function () {
 
@@ -106,6 +117,14 @@ Route::prefix('v1')->group(function () {
             Route::post('/admin/users', [UserController::class, 'store']);
             Route::put('/admin/users/{user}', [UserController::class, 'update']);
             Route::delete('/admin/users/{user}', [UserController::class, 'destroy']);
+
+            // Audit Access Management
+            Route::get('/admin/audit-links', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'getLinks']);
+            Route::post('/admin/audit-links', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'generateLink']);
+            Route::put('/admin/audit-links/{id}/toggle', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'toggleLink']);
+            Route::get('/admin/audit-sessions/pending', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'getPendingSessions']);
+            Route::put('/admin/audit-sessions/{id}/approve', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'approveSession']);
+            Route::get('/admin/audit-logs', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'getAccessLogs']);
 
             // Master data write
             Route::post('/buildings', [MasterDataController::class, 'storeBuilding']);

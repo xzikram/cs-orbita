@@ -2,6 +2,7 @@
 import { useAuthStore } from '../stores/auth'
 import { useRouter, useRoute } from 'vue-router'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { echo } from '../lib/echo'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -10,6 +11,29 @@ const sidebarCollapsed = ref(false)
 const mobileOpen = ref(false)
 const isMobile = ref(false)
 
+const auditNotification = ref({
+  show: false,
+  name: '',
+  unit: '',
+})
+
+function showNotificationToast(event: any) {
+  auditNotification.value = {
+    show: true,
+    name: event.name,
+    unit: event.unit,
+  }
+  // Auto hide after 8 seconds
+  setTimeout(() => {
+    auditNotification.value.show = false
+  }, 8000)
+}
+
+function goToAuditApprovals() {
+  auditNotification.value.show = false
+  router.push({ name: 'admin-audit-access' })
+}
+
 function checkWidth() {
   isMobile.value = window.innerWidth <= 768
 }
@@ -17,10 +41,21 @@ function checkWidth() {
 onMounted(() => {
   checkWidth()
   window.addEventListener('resize', checkWidth)
+
+  // Listen to real-time audit approvals (admins only)
+  if (authStore.user?.role === 'administrator') {
+    echo.private('admin-approvals')
+      .listen('.App\\Events\\AuditSessionRequested', (e: any) => {
+        showNotificationToast(e)
+      })
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkWidth)
+  if (authStore.user?.role === 'administrator') {
+    echo.leave('admin-approvals')
+  }
 })
 
 const currentRoute = computed(() => route.name)
@@ -31,8 +66,8 @@ const mobileMenuItems = computed(() => {
   if (role === 'administrator') {
     return [
       { name: 'admin-dashboard', label: 'Home', icon: '🏠' },
-      { name: 'admin-users', label: 'Pengguna', icon: '👥' },
-      { name: 'admin-areas', label: 'Area', icon: '🏢' },
+      { name: 'kpi-dashboard', label: 'KPI', icon: '📈' },
+      { name: 'admin-audit-access', label: 'Audit', icon: '🔑' },
       { name: 'reports', label: 'Laporan', icon: '📄' },
       { name: 'dashboard-profile', label: 'Profil', icon: '👤' },
     ]
@@ -81,6 +116,7 @@ const menuItems = computed(() => {
     items.push(
       { name: 'admin-users', label: 'Pengguna', icon: '👥', group: 'Admin' },
       { name: 'admin-areas', label: 'Kelola Area', icon: '🏢', group: 'Admin' },
+      { name: 'admin-audit-access', label: 'Kelola Akses Audit', icon: '🔑', group: 'Admin' },
     )
   }
 
@@ -220,6 +256,20 @@ async function handleLogout() {
       </RouterLink>
     </nav>
   </div>
+
+  <!-- Global Realtime Audit Access Request Toast -->
+  <Teleport to="body">
+    <Transition name="toast-slide">
+      <div v-if="auditNotification.show" class="audit-toast" @click="goToAuditApprovals">
+        <span class="toast-icon">🔑</span>
+        <div class="toast-body">
+          <span class="toast-title">Permintaan Akses Baru</span>
+          <span class="toast-desc"><b>{{ auditNotification.name }}</b> ({{ auditNotification.unit }}) meminta akses laporan.</span>
+        </div>
+        <span class="toast-action">Buka →</span>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -579,6 +629,71 @@ async function handleLogout() {
 
 .mobile-bottom-nav a:hover {
   background: hsl(var(--muted));
+}
+
+/* ===== Audit Notification Toast ===== */
+.audit-toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--primary) / 0.3);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 0 0 0 1px hsl(var(--primary) / 0.1);
+  z-index: 10000;
+  cursor: pointer;
+  width: 360px;
+  animation: slide-up-notification 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s ease;
+}
+
+.audit-toast:hover {
+  transform: translateY(-2px);
+  border-color: hsl(var(--primary));
+}
+
+.toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+}
+
+.toast-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+.toast-desc {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+}
+
+.toast-action {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--primary));
+  white-space: nowrap;
+}
+
+@keyframes slide-up-notification {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .audit-toast {
+    bottom: 5.5rem;
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+  }
 }
 </style>
 
