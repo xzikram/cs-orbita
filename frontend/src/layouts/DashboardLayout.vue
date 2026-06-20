@@ -484,7 +484,9 @@ async function handleLogout() {
 
 /* Mobile App Layout for Dashboard Layout */
 .mobile-app {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: hsl(var(--background));
@@ -523,8 +525,8 @@ async function handleLogout() {
 
 .mobile-content {
   flex: 1;
-  padding: 1rem;
-  padding-bottom: 5rem;
+  padding: 0.75rem;
+  padding-bottom: 4.5rem;
   overflow-y: auto;
 }
 
