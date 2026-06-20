@@ -236,7 +236,7 @@ onMounted(() => {
         <p class="page-subtitle">Manajemen akun pengguna, role, dan akses perangkat</p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-secondary" @click="fetchUsers()">🔄 Refresh</button>
+        <button class="btn btn-secondary hide-on-mobile" @click="fetchUsers()">🔄 Refresh</button>
         <button class="btn btn-primary" @click="openAddModal">+ Tambah User</button>
       </div>
     </div>

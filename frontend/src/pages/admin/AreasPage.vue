@@ -163,7 +163,7 @@ onMounted(() => {
         <p class="page-subtitle">Daftar area pembersihan yang terdaftar di sistem</p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-secondary" @click="fetchAreas">🔄 Refresh</button>
+        <button class="btn btn-secondary hide-on-mobile" @click="fetchAreas">🔄 Refresh</button>
         <button class="btn btn-primary" @click="generateAllQr" :disabled="generating">
           {{ generating ? '⏳ Generating...' : '📱 Generate Missing QR' }}
         </button>

@@ -44,7 +44,7 @@ onMounted(() => {
         <h1 class="text-2xl font-bold">Area Saya</h1>
         <p class="text-muted-foreground">Daftar area di bawah tanggung jawab Anda.</p>
       </div>
-      <button class="btn btn-secondary" @click="fetchMyAreas">🔄 Refresh</button>
+      <button class="btn btn-secondary hide-on-mobile" @click="fetchMyAreas">🔄 Refresh</button>
     </div>
 
     <div v-if="loading" class="flex justify-center p-12">

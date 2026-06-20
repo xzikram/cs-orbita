@@ -141,7 +141,7 @@ onMounted(() => {
         <h1 class="page-title"><span class="title-icon">✅</span> Persetujuan Laporan</h1>
         <p class="page-subtitle">Tinjau dan setujui laporan kebersihan dari Cleaning Service</p>
       </div>
-      <button class="btn btn-secondary" @click="fetchActivities(); fetchStats()">🔄 Refresh</button>
+      <button class="btn btn-secondary hide-on-mobile" @click="fetchActivities(); fetchStats()">🔄 Refresh</button>
     </div>
 
     <!-- Stats -->

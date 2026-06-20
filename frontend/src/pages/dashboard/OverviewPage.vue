@@ -42,7 +42,7 @@ onUnmounted(() => {
         <h1 class="text-2xl font-bold">Command Center</h1>
         <p class="text-muted-foreground">Ringkasan operasional hari ini</p>
       </div>
-      <button class="btn btn-secondary" @click="loadData">
+      <button class="btn btn-secondary hide-on-mobile" @click="loadData">
         <span>🔄</span> Refresh
       </button>
     </div>

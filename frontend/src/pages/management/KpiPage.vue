@@ -124,7 +124,7 @@ function hideBarTooltip() {
             {{ formatPeriodLabel(startDate) }} — {{ formatPeriodLabel(endDate) }}
           </span>
         </div>
-        <button class="btn btn-secondary" @click="loadData" :disabled="loading">
+        <button class="btn btn-secondary hide-on-mobile" @click="loadData" :disabled="loading">
           {{ loading ? 'Memuat...' : '🔄 Refresh' }}
         </button>
       </div>

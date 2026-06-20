@@ -56,7 +56,7 @@ const quickLinks = computed(() => {
         <h1 class="text-2xl font-bold">Admin Dashboard</h1>
         <p class="text-muted-foreground">Ringkasan sistem dan data operasional.</p>
       </div>
-      <button class="btn btn-secondary" @click="loadData">🔄 Refresh</button>
+      <button class="btn btn-secondary hide-on-mobile" @click="loadData">🔄 Refresh</button>
     </div>
 
     <div v-if="loading" class="flex justify-center py-12">
