@@ -511,12 +511,8 @@ function logoutAudit() {
             </select>
           </div>
         </div>
-        <div class="period-indicator" v-if="month && year">
-          <span>Aktivitas periode: <b>{{ getPeriodLabel() }}</b></span>
-        </div>
       </section>
 
-      <!-- Export Grid -->
       <div class="export-grid">
         <!-- Daily Checklist Card -->
         <div class="export-card animate-slide-up stagger-1">
@@ -900,13 +896,6 @@ function logoutAudit() {
   gap: 1.25rem;
 }
 
-.period-indicator {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid hsl(var(--border));
-  font-size: 0.85rem;
-  color: hsl(var(--muted-foreground));
-}
 
 /* Export Grid */
 .export-grid {
