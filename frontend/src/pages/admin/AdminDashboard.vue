@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '../../lib/axios'
 
 const stats = ref<any>(null)
 const loading = ref(true)
+const isMobile = ref(false)
+
+function checkWidth() {
+  isMobile.value = window.innerWidth <= 768
+}
 
 async function loadData() {
   try {
@@ -18,6 +23,29 @@ async function loadData() {
 
 onMounted(() => {
   loadData()
+  checkWidth()
+  window.addEventListener('resize', checkWidth)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkWidth)
+})
+
+const quickLinks = computed(() => {
+  if (isMobile.value) {
+    return [
+      { name: 'supervisor-dashboard', label: 'Overview', icon: '📊' },
+      { name: 'monitoring', label: 'Live Monitoring', icon: '📡' },
+      { name: 'approvals', label: 'Approval Laporan', icon: '✅' },
+      { name: 'kpi-dashboard', label: 'KPI Dashboard', icon: '📈' },
+    ]
+  }
+  return [
+    { name: 'admin-users', label: 'Kelola Pengguna', icon: '👥' },
+    { name: 'admin-areas', label: 'Kelola Area', icon: '🏢' },
+    { name: 'monitoring', label: 'Live Monitoring', icon: '📡' },
+    { name: 'reports', label: 'Laporan', icon: '📄' },
+  ]
 })
 </script>
 
@@ -79,21 +107,14 @@ onMounted(() => {
       <div class="quick-links">
         <h2 class="font-bold mb-4">Menu Cepat</h2>
         <div class="links-grid">
-          <RouterLink :to="{ name: 'admin-users' }" class="link-card">
-            <span class="link-icon">👥</span>
-            <span>Kelola Pengguna</span>
-          </RouterLink>
-          <RouterLink :to="{ name: 'admin-areas' }" class="link-card">
-            <span class="link-icon">🏢</span>
-            <span>Kelola Area</span>
-          </RouterLink>
-          <RouterLink :to="{ name: 'monitoring' }" class="link-card">
-            <span class="link-icon">📡</span>
-            <span>Live Monitoring</span>
-          </RouterLink>
-          <RouterLink :to="{ name: 'reports' }" class="link-card">
-            <span class="link-icon">📄</span>
-            <span>Laporan</span>
+          <RouterLink 
+            v-for="link in quickLinks" 
+            :key="link.name" 
+            :to="{ name: link.name }" 
+            class="link-card"
+          >
+            <span class="link-icon">{{ link.icon }}</span>
+            <span>{{ link.label }}</span>
           </RouterLink>
         </div>
       </div>
