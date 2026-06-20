@@ -508,7 +508,7 @@ class AuditAccessController extends Controller
             <table style='border:none;'>
                 <tr>
                     <td colspan='3' style='border:none;' class='text-left'>
-                        Ket : v BERSIH<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;X KOTOR
+                        Ket : v
                     </td>
                     <td colspan='" . (($daysInMonth * 2) - 4) . "' style='border:none;'></td>
                     <td colspan='4' style='border:none;' class='text-center bold'>PJ {$areaName}</td>
