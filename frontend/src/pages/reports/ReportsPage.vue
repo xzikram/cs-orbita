@@ -248,7 +248,7 @@ function exportDailyToExcel() {
       act.items.forEach((item: any, itemIdx: number) => {
         const room = item.area_object?.room_name || 'Umum'
         const objName = item.area_object?.cleaning_object?.name || '-'
-        const status = item.is_checked ? 'BERSIH (v)' : 'KOTOR (x)'
+        const status = item.is_checked ? '✓' : '✗'
         const checkedAt = item.checked_at ? formatTimeOnly(item.checked_at) : '-'
         
         html += `
@@ -287,7 +287,7 @@ function exportDailyToExcel() {
       <table style="border:none;">
         <tr>
           <td colspan="2" style="border:none;" class="text-left">
-            Ket : v BERSIH<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;X KOTOR
+            Ket : ✓ / ✗
           </td>
           <td style="border:none;"></td>
           <td colspan="2" style="border:none;" class="text-center bold">PJ ${areaName.toUpperCase()}</td>
