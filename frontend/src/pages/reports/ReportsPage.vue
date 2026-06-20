@@ -1567,7 +1567,7 @@ function calculateDuration(start: string, end: string): number | string {
 .checklist-table-details th,
 .checklist-table-details td {
   border: 1px solid hsl(var(--border) / 0.6);
-  padding: 0.625rem;
+  padding: 0.35rem 0.5rem;
 }
 
 .checklist-table-details th {
@@ -1842,28 +1842,30 @@ function calculateDuration(start: string, end: string): number | string {
     width: 100% !important;
     max-width: 800px !important;
     margin: 0 auto !important;
-    padding: 40px 30px !important;
+    padding: 15px 10px !important;
     box-sizing: border-box !important;
     background: white !important;
     color: black !important;
   }
 
   .checklist-table-details {
-    width: 95% !important;
-    margin: 0 auto 1.5rem auto !important;
+    width: 100% !important;
+    margin: 0 auto 0.5rem auto !important;
+  }
+
+  .checklist-table-details th,
+  .checklist-table-details td {
+    padding: 3px 6px !important;
+    font-size: 11px !important;
   }
 
   .activity-print-section {
-    page-break-after: always;
+    page-break-inside: avoid !important;
     border: none !important;
     padding: 0 !important;
-    margin: 0 auto 2rem auto !important;
+    margin: 0 auto 1rem auto !important;
     background: white !important;
     max-width: 740px !important;
-  }
-
-  .activity-print-section:last-child {
-    page-break-after: avoid;
   }
 
   .activity-print-header {
@@ -1905,13 +1907,20 @@ function calculateDuration(start: string, end: string): number | string {
     display: flex !important;
     flex-wrap: wrap !important;
     justify-content: flex-start !important;
+    padding: 0.25rem !important;
   }
 
   .photo-print-el {
-    height: 120px !important;
+    height: 80px !important;
     width: calc(50% - 0.25rem) !important;
-    max-width: 150px !important;
+    max-width: 120px !important;
     object-fit: cover !important;
+  }
+
+  .activity-print-notes {
+    padding: 0.35rem 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+    font-size: 11px !important;
   }
 }
 </style>

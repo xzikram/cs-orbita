@@ -1099,14 +1099,14 @@ function logoutAudit() {
 .checklist-table-details {
   width: 100%;
   border-collapse: collapse;
-  margin: 1.5rem 0;
+  margin: 0.75rem 0;
 }
 
 .checklist-table-details th,
 .checklist-table-details td {
   border: 1px solid hsl(var(--border));
-  padding: 0.75rem;
-  font-size: 0.85rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
 }
 
 .checklist-table-details th {
@@ -1263,7 +1263,39 @@ function logoutAudit() {
     padding: 0;
   }
   .activity-print-section {
-    page-break-after: always;
+    page-break-inside: avoid !important;
+    margin-bottom: 1rem !important;
+  }
+  .checklist-table-details {
+    margin: 0.5rem 0 !important;
+  }
+  .checklist-table-details th,
+  .checklist-table-details td {
+    padding: 3px 6px !important;
+    font-size: 11px !important;
+  }
+  #daily-print-area {
+    padding: 15px 10px !important;
+  }
+  .activity-print-photos {
+    margin: 0.5rem 0 !important;
+    gap: 0.5rem !important;
+  }
+  .photo-print-wrapper {
+    padding: 0.25rem !important;
+  }
+  .photo-print-el {
+    height: 80px !important;
+  }
+  .activity-print-notes {
+    padding: 0.35rem 0.5rem !important;
+    margin: 0.5rem 0 !important;
+  }
+  .print-signatures {
+    margin-top: 1rem !important;
+  }
+  .signature-line {
+    margin-top: 2rem !important;
   }
 }
 
