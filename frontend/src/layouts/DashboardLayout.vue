@@ -19,8 +19,8 @@ const menuItems = computed(() => {
     items.push(
       { name: 'supervisor-dashboard', label: 'Overview', icon: '📊', group: 'Monitoring' },
       { name: 'monitoring', label: 'Live Monitoring', icon: '📡', group: 'Monitoring' },
-      { name: 'heatmap', label: 'Heatmap Area', icon: '🗺️', group: 'Monitoring' },
-      { name: 'audit', label: 'Audit Grid', icon: '📋', group: 'Monitoring' },
+      // { name: 'heatmap', label: 'Heatmap Area', icon: '🗺️', group: 'Monitoring' },
+      // { name: 'audit', label: 'Audit Grid', icon: '📋', group: 'Monitoring' },
       { name: 'approvals', label: 'Approval Laporan', icon: '✅', group: 'Monitoring' },
     )
   }
@@ -50,7 +50,7 @@ const menuItems = computed(() => {
 
   // Common menus
   items.push(
-    { name: 'complaints', label: 'Komplain', icon: '⚠️', group: 'Umum' },
+    // { name: 'complaints', label: 'Komplain', icon: '⚠️', group: 'Umum' },
     { name: 'reports', label: 'Laporan', icon: '📄', group: 'Umum' },
   )
 
