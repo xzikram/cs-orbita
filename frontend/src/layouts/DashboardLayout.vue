@@ -1,15 +1,66 @@
 <script setup lang="ts">
 import { useAuthStore } from '../stores/auth'
 import { useRouter, useRoute } from 'vue-router'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 const sidebarCollapsed = ref(false)
 const mobileOpen = ref(false)
+const isMobile = ref(false)
+
+function checkWidth() {
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  checkWidth()
+  window.addEventListener('resize', checkWidth)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkWidth)
+})
 
 const currentRoute = computed(() => route.name)
+
+const mobileMenuItems = computed(() => {
+  const role = authStore.user?.role || ''
+  
+  if (role === 'administrator') {
+    return [
+      { name: 'admin-dashboard', label: 'Home', icon: '🏠' },
+      { name: 'admin-users', label: 'Pengguna', icon: '👥' },
+      { name: 'admin-areas', label: 'Area', icon: '🏢' },
+      { name: 'reports', label: 'Laporan', icon: '📄' },
+      { name: 'dashboard-profile', label: 'Profil', icon: '👤' },
+    ]
+  } else if (role === 'supervisor') {
+    return [
+      { name: 'supervisor-dashboard', label: 'Home', icon: '📊' },
+      { name: 'monitoring', label: 'Monitor', icon: '📡' },
+      { name: 'approvals', label: 'Approval', icon: '✅' },
+      { name: 'reports', label: 'Laporan', icon: '📄' },
+      { name: 'dashboard-profile', label: 'Profil', icon: '👤' },
+    ]
+  } else if (role === 'kepala_ruangan') {
+    return [
+      { name: 'my-areas', label: 'Home', icon: '🏠' },
+      { name: 'approvals', label: 'Approval', icon: '✅' },
+      { name: 'reports', label: 'Laporan', icon: '📄' },
+      { name: 'dashboard-profile', label: 'Profil', icon: '👤' },
+    ]
+  } else if (role === 'manajemen') {
+    return [
+      { name: 'kpi-dashboard', label: 'Home', icon: '📈' },
+      { name: 'reports', label: 'Laporan', icon: '📄' },
+      { name: 'dashboard-profile', label: 'Profil', icon: '👤' },
+    ]
+  }
+  
+  return []
+})
 
 const menuItems = computed(() => {
   const items = []
@@ -73,7 +124,8 @@ async function handleLogout() {
 </script>
 
 <template>
-  <div class="dashboard-layout">
+<!-- Desktop Layout -->
+  <div v-if="!isMobile" class="dashboard-layout">
     <!-- Mobile Hamburger -->
     <button class="hamburger-btn" @click="mobileOpen = !mobileOpen">
       {{ mobileOpen ? '✕' : '☰' }}
@@ -134,6 +186,39 @@ async function handleLogout() {
         </Transition>
       </RouterView>
     </main>
+  </div>
+
+  <!-- Mobile Layout -->
+  <div v-else class="mobile-app">
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+      <div class="mobile-header-content">
+        <img src="/Logo%20RS%20JEC%20ORBITA.png" alt="Logo RS JEC Orbita" class="mobile-logo-img" />
+        <span class="mobile-user">{{ authStore.user?.name }}</span>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="mobile-content">
+      <RouterView v-slot="{ Component }">
+        <Transition name="page" mode="out-in">
+          <component :is="Component" />
+        </Transition>
+      </RouterView>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="mobile-bottom-nav">
+      <RouterLink
+        v-for="item in mobileMenuItems"
+        :key="item.name"
+        :to="{ name: item.name }"
+        :class="{ active: currentRoute === item.name }"
+      >
+        <span class="nav-icon">{{ item.icon }}</span>
+        <span>{{ item.label }}</span>
+      </RouterLink>
+    </nav>
   </div>
 </template>
 
@@ -395,5 +480,102 @@ async function handleLogout() {
     z-index: 39;
     backdrop-filter: blur(2px);
   }
+}
+
+/* Mobile App Layout for Dashboard Layout */
+.mobile-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.mobile-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.875rem 1rem;
+}
+
+.mobile-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-logo-img {
+  height: 24px;
+  max-width: 180px;
+  width: auto;
+  object-fit: contain;
+}
+
+.mobile-user {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.mobile-content {
+  flex: 1;
+  padding: 1rem;
+  padding-bottom: 5rem;
+  overflow-y: auto;
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  z-index: 50;
+  background: hsl(var(--card) / 0.9);
+  border-top: 1px solid hsl(var(--border));
+  display: flex;
+  justify-content: space-around;
+  padding: 0.5rem 0.25rem;
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  backdrop-filter: blur(10px);
+}
+
+.mobile-bottom-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  text-decoration: none;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.65rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  flex: 1;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+}
+
+.mobile-bottom-nav a .nav-icon {
+  font-size: 1.25rem;
+  margin-bottom: 0.125rem;
+  transition: transform 0.2s ease;
+}
+
+.mobile-bottom-nav a.active {
+  color: hsl(var(--primary));
+}
+
+.mobile-bottom-nav a.active .nav-icon {
+  transform: translateY(-2px);
+}
+
+.mobile-bottom-nav a:hover {
+  background: hsl(var(--muted));
 }
 </style>

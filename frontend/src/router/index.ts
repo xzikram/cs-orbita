@@ -131,6 +131,12 @@ export const routes: RouteRecordRaw[] = [
         name: 'reports',
         component: () => import('../pages/reports/ReportsPage.vue'),
       },
+      // Profile (shared for mobile view)
+      {
+        path: 'profile',
+        name: 'dashboard-profile',
+        component: () => import('../pages/mobile/ProfilePage.vue'),
+      },
     ],
   },
 
