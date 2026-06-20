@@ -131,7 +131,7 @@ Route::prefix('v1')->group(function () {
             // Database Backup & Restore Management
             Route::get('/admin/backups', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'index']);
             Route::post('/admin/backups', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'store']);
-            Route::get('/admin/backups/{filename}', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'download']);
+            Route::get('/admin/backups/{filename}/download', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'download']);
             Route::delete('/admin/backups/{filename}', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'destroy']);
             Route::post('/admin/backups/{filename}/restore', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'restoreFromFile']);
             Route::post('/admin/backups/restore', [\App\Http\Controllers\Api\V1\Admin\BackupController::class, 'uploadAndRestore']);

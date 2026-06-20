@@ -61,7 +61,7 @@ async function generateBackup() {
 async function downloadBackup(filename: string) {
   try {
     // Call download endpoint and trigger browser save
-    const response = await api.get(`/api/v1/admin/backups/${filename}`, {
+    const response = await api.get(`/api/v1/admin/backups/${filename}/download`, {
       responseType: 'blob',
     })
     const url = window.URL.createObjectURL(new Blob([response.data]))

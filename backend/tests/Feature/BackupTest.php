@@ -82,7 +82,7 @@ class BackupTest extends TestCase
         file_put_contents($path, 'SELECT 1;');
 
         $response = $this->actingAs($this->admin)
-            ->get('/api/v1/admin/backups/backup_test_123.sql');
+            ->get('/api/v1/admin/backups/backup_test_123.sql/download');
 
         $response->assertStatus(200)
             ->assertHeader('content-disposition', 'attachment; filename=backup_test_123.sql');
