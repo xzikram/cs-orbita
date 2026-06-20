@@ -1859,8 +1859,12 @@ function calculateDuration(start: string, end: string): number | string {
     font-size: 11px !important;
   }
 
-  .activity-print-section {
+  .checklist-table-details tr {
     page-break-inside: avoid !important;
+  }
+
+  .activity-print-section {
+    page-break-inside: auto !important;
     border: none !important;
     padding: 0 !important;
     margin: 0 auto 1rem auto !important;

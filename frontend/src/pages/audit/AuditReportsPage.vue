@@ -1146,13 +1146,9 @@ function logoutAudit() {
 .meta-print-table td {
   padding: 0.15rem 0.5rem;
   font-size: 0.875rem;
+}.activity-print-section {
+  margin-bottom: 2rem;
 }
-
-.activity-print-section {
-  margin-bottom: 3rem;
-  page-break-inside: avoid;
-}
-
 .activity-print-header {
   background: hsl(var(--secondary) / 0.5);
   padding: 0.75rem 1rem;
@@ -1263,8 +1259,11 @@ function logoutAudit() {
     padding: 0;
   }
   .activity-print-section {
-    page-break-inside: avoid !important;
+    page-break-inside: auto !important;
     margin-bottom: 1rem !important;
+  }
+  .checklist-table-details tr {
+    page-break-inside: avoid !important;
   }
   .checklist-table-details {
     margin: 0.5rem 0 !important;
