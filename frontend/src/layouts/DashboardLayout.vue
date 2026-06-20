@@ -75,14 +75,14 @@ const mobileMenuItems = computed(() => {
     return [
       { name: 'supervisor-dashboard', label: 'Home', icon: '📊' },
       { name: 'monitoring', label: 'Monitor', icon: '📡' },
-      { name: 'approvals', label: 'Approval', icon: '✅' },
+      // { name: 'approvals', label: 'Approval', icon: '✅' },
       { name: 'reports', label: 'Laporan', icon: '📄' },
       { name: 'dashboard-profile', label: 'Profil', icon: '👤' },
     ]
   } else if (role === 'kepala_ruangan') {
     return [
       { name: 'my-areas', label: 'Home', icon: '🏠' },
-      { name: 'approvals', label: 'Approval', icon: '✅' },
+      // { name: 'approvals', label: 'Approval', icon: '✅' },
       { name: 'reports', label: 'Laporan', icon: '📄' },
       { name: 'dashboard-profile', label: 'Profil', icon: '👤' },
     ]
@@ -107,7 +107,7 @@ const menuItems = computed(() => {
       { name: 'monitoring', label: 'Live Monitoring', icon: '📡', group: 'Monitoring' },
       // { name: 'heatmap', label: 'Heatmap Area', icon: '🗺️', group: 'Monitoring' },
       // { name: 'audit', label: 'Audit Grid', icon: '📋', group: 'Monitoring' },
-      { name: 'approvals', label: 'Approval Laporan', icon: '✅', group: 'Monitoring' },
+      // { name: 'approvals', label: 'Approval Laporan', icon: '✅', group: 'Monitoring' },
     )
   }
 
@@ -132,7 +132,7 @@ const menuItems = computed(() => {
   if (authStore.user?.role === 'kepala_ruangan') {
     items.push(
       { name: 'my-areas', label: 'Area Saya', icon: '🏠', group: 'Area' },
-      { name: 'approvals', label: 'Approval Laporan', icon: '✅', group: 'Area' },
+      // { name: 'approvals', label: 'Approval Laporan', icon: '✅', group: 'Area' },
     )
   }
 

@@ -36,7 +36,7 @@ const quickLinks = computed(() => {
     return [
       { name: 'supervisor-dashboard', label: 'Overview', icon: '📊' },
       { name: 'monitoring', label: 'Live Monitoring', icon: '📡' },
-      { name: 'approvals', label: 'Approval Laporan', icon: '✅' },
+      // { name: 'approvals', label: 'Approval Laporan', icon: '✅' },
       { name: 'kpi-dashboard', label: 'KPI Dashboard', icon: '📈' },
     ]
   }
