@@ -392,127 +392,92 @@ function calculateDuration(start: string, end: string): number | string {
       </Transition>
     </Teleport>
 
-    <div class="reports-header">
-      <div>
-        <h1 class="page-title">Laporan & Ekspor</h1>
-        <p class="page-subtitle">Unduh file laporan berkala aktivitas kebersihan, audit, dan matrix ruangan.</p>
+    <!-- Page Header with Icon Badge -->
+    <div class="reports-header mb-6">
+      <div class="flex items-center gap-3">
+        <div class="header-icon-badge">📊</div>
+        <div>
+          <h1 class="page-title">Laporan & Ekspor</h1>
+          <p class="page-subtitle">Unduh berkas laporan berkala aktivitas kebersihan, audit, dan matrix ruangan.</p>
+        </div>
       </div>
     </div>
 
-    <!-- Filter Periode Card -->
-    <div class="card filter-card mb-6 animate-slide-up">
+    <!-- Filter Periode Card (Glassmorphic design) -->
+    <div class="card filter-card glass-card mb-6 animate-slide-up">
       <h2 class="filter-title">
-        <span>📅</span> Pilih Periode Laporan
+        <span class="title-icon-wrapper">📅</span> Pilih Periode Laporan
       </h2>
       <div class="filter-row">
         <div class="form-group filter-field">
-          <label class="label">Bulan</label>
-          <select v-model="month" class="input select-input">
-            <option :value="1">Januari</option>
-            <option :value="2">Februari</option>
-            <option :value="3">Maret</option>
-            <option :value="4">April</option>
-            <option :value="5">Mei</option>
-            <option :value="6">Juni</option>
-            <option :value="7">Juli</option>
-            <option :value="8">Agustus</option>
-            <option :value="9">September</option>
-            <option :value="10">Oktober</option>
-            <option :value="11">November</option>
-            <option :value="12">Desember</option>
-          </select>
+          <label class="label"><span class="input-icon">🗓️</span> Bulan</label>
+          <div class="select-wrapper">
+            <select v-model="month" class="input select-input">
+              <option :value="1">Januari</option>
+              <option :value="2">Februari</option>
+              <option :value="3">Maret</option>
+              <option :value="4">April</option>
+              <option :value="5">Mei</option>
+              <option :value="6">Juni</option>
+              <option :value="7">Juli</option>
+              <option :value="8">Agustus</option>
+              <option :value="9">September</option>
+              <option :value="10">Oktober</option>
+              <option :value="11">November</option>
+              <option :value="12">Desember</option>
+            </select>
+          </div>
         </div>
         
         <div class="form-group filter-field">
-          <label class="label">Tahun</label>
-          <select v-model="year" class="input select-input">
-            <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
-            <option :value="new Date().getFullYear()">{{ new Date().getFullYear() }}</option>
-          </select>
+          <label class="label"><span class="input-icon">📆</span> Tahun</label>
+          <div class="select-wrapper">
+            <select v-model="year" class="input select-input">
+              <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
+              <option :value="new Date().getFullYear()">{{ new Date().getFullYear() }}</option>
+            </select>
+          </div>
         </div>
 
-        <div class="form-group filter-field">
-          <label class="label">Pilih Ruangan/Area <span class="label-hint">(Untuk Excel & Ceklist)</span></label>
-          <select v-model="areaId" class="input select-input" :disabled="areas.length === 0">
-            <option value="">Pilih Area...</option>
-            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
-          </select>
+        <div class="form-group filter-field area-select-field">
+          <label class="label">
+            <span class="input-icon">🏢</span> Pilih Ruangan/Area 
+            <span class="label-hint">(Ceklist & Excel)</span>
+          </label>
+          <div class="select-wrapper">
+            <select v-model="areaId" class="input select-input" :disabled="areas.length === 0">
+              <option value="">Pilih Area...</option>
+              <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }} [{{ a.code }}]</option>
+            </select>
+          </div>
         </div>
       </div>
+      
       <div class="period-indicator" v-if="month && year">
+        <span class="period-indicator-glow"></span>
         <span class="period-indicator-icon">📋</span>
-        <span>Periode aktif: <b>{{ getPeriodLabel() }}</b></span>
+        <span>Periode aktif saat ini: <b>{{ getPeriodLabel() }}</b></span>
       </div>
     </div>
 
-    <!-- Export Grid Layout -->
-    <div class="export-grid">
-      <!-- Monthly CSV Report (Temporarily Hidden)
-      <div class="export-card animate-slide-up stagger-1">
+    <!-- Export Grid Layout (Premium Cards) -->
+    <div class="export-grid mb-6">
+      <!-- Daily Checklist Card (Featured) -->
+      <div class="export-card export-card-featured glass-card animate-slide-up stagger-1">
         <div class="export-card-body">
-          <div class="export-header">
-            <span class="export-title">Aktivitas Pembersihan</span>
-            <span class="format-badge csv">CSV</span>
-          </div>
-          <div class="export-desc">
-            <p>
-              Mengekspor log lengkap seluruh pembersihan harian, jam mulai/selesai, durasi pengerjaan, nama petugas, serta catatan kendala operasional lapangan.
-            </p>
-          </div>
-        </div>
-        <div class="export-card-footer">
-          <div class="download-meta" v-if="lastDownload.monthly">
-            <span class="download-meta-icon">✓</span>
-            Terakhir diunduh: {{ lastDownload.monthly }}
-          </div>
-          <button class="btn btn-primary export-btn" @click="downloadReport('monthly')" :disabled="loading.monthly">
-            <span v-if="loading.monthly" class="spinner-small"></span>
-            <span>{{ loading.monthly ? 'Memproses...' : 'Unduh Laporan Aktivitas (.csv)' }}</span>
-          </button>
-        </div>
-      </div>
-      -->
-
-      <!-- Audit CSV Report (Temporarily Hidden)
-      <div class="export-card animate-slide-up stagger-2">
-        <div class="export-card-body">
-          <div class="export-header">
-            <span class="export-title">Rekap Audit & Kepatuhan</span>
-            <span class="format-badge csv">CSV</span>
-          </div>
-          <div class="export-desc">
-            <p>
-              Mengekspor rekapitulasi data audit berkala oleh supervisor, rata-rata skor kebersihan/kerapihan/SOP, rincian status lulus/gagal, serta deskripsi catatan temuan inspeksi.
-            </p>
-          </div>
-        </div>
-        <div class="export-card-footer">
-          <div class="download-meta" v-if="lastDownload.audit">
-            <span class="download-meta-icon">✓</span>
-            Terakhir diunduh: {{ lastDownload.audit }}
-          </div>
-          <button class="btn btn-primary export-btn" @click="downloadReport('audit')" :disabled="loading.audit">
-            <span v-if="loading.audit" class="spinner-small"></span>
-            <span>{{ loading.audit ? 'Memproses...' : 'Unduh Laporan Audit (.csv)' }}</span>
-          </button>
-        </div>
-      </div>
-      -->
-
-      <!-- Daily Checklist Card -->
-      <div class="export-card export-card-featured animate-slide-up stagger-3">
-        <div class="export-card-body">
-          <div class="export-header">
+          <div class="export-header mb-3">
             <span class="export-title export-title-gradient">Ceklist Harian & Foto Bukti</span>
-            <span class="format-badge csv">PRATINJAU & PDF</span>
+            <span class="format-badge format-badge-accent">PRATINJAU & PDF</span>
           </div>
           <div class="export-desc">
             <p>
               Pratinjau visual tabel ceklist kebersihan ruangan beserta foto bukti sebelum/sesudah per hari, serta cetak langsung atau simpan sebagai dokumen PDF.
             </p>
+            
             <div class="form-group mt-4">
               <label class="label text-xs">Pilih Mode Periode</label>
-              <div class="filter-mode-tabs mb-3">
+              <!-- iOS Style Pill Tabs -->
+              <div class="filter-mode-tabs mb-4">
                 <button 
                   type="button"
                   class="tab-btn" 
@@ -535,62 +500,70 @@ function calculateDuration(start: string, end: string): number | string {
 
               <!-- Today Mode -->
               <div v-if="filterMode === 'today'" class="mode-input-container">
-                <span class="text-xs" style="color: hsl(var(--muted-foreground));">Hari ini: <b>{{ formatIndoDate(new Date().toISOString().split('T')[0]) }}</b></span>
+                <div class="today-banner">
+                  <span class="today-dot"></span>
+                  <span class="text-xs font-semibold text-muted-foreground">Hari ini: <b class="text-foreground">{{ formatIndoDate(new Date().toISOString().split('T')[0]) }}</b></span>
+                </div>
               </div>
 
               <!-- Month Mode -->
               <div v-else-if="filterMode === 'month'" class="mode-input-container inline-flex-container">
                 <div class="flex-field">
-                  <label class="label text-xs">Bulan</label>
-                  <select v-model="selectedDailyMonth" class="input select-input text-xs">
-                    <option :value="1">Januari</option>
-                    <option :value="2">Februari</option>
-                    <option :value="3">Maret</option>
-                    <option :value="4">April</option>
-                    <option :value="5">Mei</option>
-                    <option :value="6">Juni</option>
-                    <option :value="7">Juli</option>
-                    <option :value="8">Agustus</option>
-                    <option :value="9">September</option>
-                    <option :value="10">Oktober</option>
-                    <option :value="11">November</option>
-                    <option :value="12">Desember</option>
-                  </select>
+                  <label class="label text-xs font-semibold">Bulan</label>
+                  <div class="select-wrapper">
+                    <select v-model="selectedDailyMonth" class="input select-input text-xs">
+                      <option :value="1">Januari</option>
+                      <option :value="2">Februari</option>
+                      <option :value="3">Maret</option>
+                      <option :value="4">April</option>
+                      <option :value="5">Mei</option>
+                      <option :value="6">Juni</option>
+                      <option :value="7">Juli</option>
+                      <option :value="8">Agustus</option>
+                      <option :value="9">September</option>
+                      <option :value="10">Oktober</option>
+                      <option :value="11">November</option>
+                      <option :value="12">Desember</option>
+                    </select>
+                  </div>
                 </div>
-                <div class="flex-field" style="width: 85px; flex-shrink: 0;">
-                  <label class="label text-xs">Tahun</label>
-                  <select v-model="selectedDailyYear" class="input select-input text-xs">
-                    <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
-                    <option :value="new Date().getFullYear()">{{ new Date().getFullYear() }}</option>
-                  </select>
+                <div class="flex-field year-flex-field">
+                  <label class="label text-xs font-semibold">Tahun</label>
+                  <div class="select-wrapper">
+                    <select v-model="selectedDailyYear" class="input select-input text-xs">
+                      <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
+                      <option :value="new Date().getFullYear()">{{ new Date().getFullYear() }}</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
               <!-- Range Mode -->
               <div v-else-if="filterMode === 'range'" class="mode-input-container inline-flex-container">
                 <div class="flex-field">
-                  <label class="label text-xs">Tanggal Mulai</label>
-                  <input type="date" v-model="startDate" class="input date-input-full text-xs" style="width: 100%;" />
+                  <label class="label text-xs font-semibold">Tanggal Mulai</label>
+                  <input type="date" v-model="startDate" class="input date-input-full text-xs" />
                 </div>
                 <div class="flex-field">
-                  <label class="label text-xs">Tanggal Selesai</label>
-                  <input type="date" v-model="endDate" class="input date-input-full text-xs" style="width: 100%;" />
+                  <label class="label text-xs font-semibold">Tanggal Selesai</label>
+                  <input type="date" v-model="endDate" class="input date-input-full text-xs" />
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="export-card-footer">
-          <div class="matrix-info">
-            <div class="selected-area" v-if="areaId">
-              <span class="download-meta-icon">📍</span>
-              Lokasi terpilih: <b>{{ getSelectedAreaName() }}</b>
+        
+        <div class="export-card-footer mt-4">
+          <div class="matrix-info mb-3">
+            <div class="selected-area-badge" v-if="areaId">
+              <span class="badge-dot"></span>
+              <span>Lokasi terpilih: <b>{{ getSelectedAreaName() }}</b></span>
             </div>
-            <div class="area-warning" v-else>
-              ⚠️ Pilih area/lokasi di atas untuk melihat pratinjau.
+            <div class="area-warning-badge" v-else>
+              ⚠️ Silakan pilih area/lokasi terlebih dahulu.
             </div>
           </div>
-          <button class="btn btn-secondary export-btn" @click="fetchDailyChecklist" :disabled="loadingDaily || !areaId">
+          <button class="btn btn-primary export-btn" @click="fetchDailyChecklist" :disabled="loadingDaily || !areaId">
             <span v-if="loadingDaily" class="spinner-small"></span>
             <span>{{ loadingDaily ? 'Memproses...' : 'Lihat Ceklist Harian (Pratinjau)' }}</span>
           </button>
@@ -598,11 +571,11 @@ function calculateDuration(start: string, end: string): number | string {
       </div>
 
       <!-- Matrix Excel Report -->
-      <div class="export-card export-card-featured animate-slide-up stagger-4">
+      <div class="export-card glass-card animate-slide-up stagger-2">
         <div class="export-card-body">
-          <div class="export-header">
-            <span class="export-title export-title-gradient">Tabel Ceklist Ruangan (Format RS JEC Orbita)</span>
-            <span class="format-badge xls">EXCEL</span>
+          <div class="export-header mb-3">
+            <span class="export-title export-title-gradient">Tabel Ceklist Ruangan (Format JEC)</span>
+            <span class="format-badge format-badge-success">EXCEL</span>
           </div>
           <div class="export-desc">
             <p>
@@ -611,22 +584,22 @@ function calculateDuration(start: string, end: string): number | string {
           </div>
         </div>
         
-        <div class="export-card-footer">
-          <div class="matrix-info">
-            <div class="selected-area" v-if="areaId">
-              <span class="download-meta-icon">📍</span>
-              Lokasi terpilih: <b>{{ getSelectedAreaName() }}</b>
+        <div class="export-card-footer mt-4">
+          <div class="matrix-info mb-3">
+            <div class="selected-area-badge" v-if="areaId">
+              <span class="badge-dot"></span>
+              <span>Lokasi terpilih: <b>{{ getSelectedAreaName() }}</b></span>
             </div>
-            <div class="area-warning" v-else>
-              ⚠️ Pilih area/lokasi di atas untuk mengaktifkan unduhan.
+            <div class="area-warning-badge" v-else>
+              ⚠️ Silakan pilih area/lokasi terlebih dahulu.
             </div>
-            <div class="download-meta" v-if="lastDownload['matrix-excel']">
+            <div class="download-meta mt-2" v-if="lastDownload['matrix-excel']">
               <span class="download-meta-icon">✓</span>
               Terakhir diunduh: {{ lastDownload['matrix-excel'] }}
             </div>
           </div>
           
-          <button class="btn btn-primary export-btn" @click="downloadReport('matrix-excel')" :disabled="loading['matrix-excel'] || !areaId">
+          <button class="btn btn-secondary export-btn" @click="downloadReport('matrix-excel')" :disabled="loading['matrix-excel'] || !areaId">
             <span v-if="loading['matrix-excel']" class="spinner-small"></span>
             <span>{{ loading['matrix-excel'] ? 'Memproses...' : 'Unduh Matrix Excel (.xls)' }}</span>
           </button>
@@ -634,13 +607,16 @@ function calculateDuration(start: string, end: string): number | string {
       </div>
     </div>
 
-    <!-- Daily Checklist Preview Modal -->
+    <!-- Daily Checklist Preview Modal (Premium Redesign) -->
     <Teleport to="body">
       <Transition name="modal-fade">
         <div v-if="showDailyModal" class="modal-overlay" @click.self="showDailyModal = false">
           <div class="modal-content modal-xl animate-scale-up">
             <div class="modal-header">
-              <h3 class="modal-title">📄 Pratinjau Ceklist Harian</h3>
+              <div class="flex items-center gap-2">
+                <span class="modal-title-icon">📄</span>
+                <h3 class="modal-title">Pratinjau Ceklist Harian</h3>
+              </div>
               <button class="modal-close" @click="showDailyModal = false">✕</button>
             </div>
             
@@ -650,7 +626,7 @@ function calculateDuration(start: string, end: string): number | string {
                   <div class="print-logo">
                     <img src="/Logo%20RS%20JEC%20ORBITA.png" alt="Logo RS JEC Orbita" class="print-logo-img" />
                   </div>
-                  <div class="print-meta-info">
+                  <div class="print-meta-info text-right">
                     <h2>LAPORAN CEKLIST HARIAN & FOTO BUKTI</h2>
                     <table class="meta-print-table">
                       <tr>
@@ -667,11 +643,12 @@ function calculateDuration(start: string, end: string): number | string {
 
                 <div v-if="dailyActivities.length === 0" class="empty-print-state">
                   <div class="empty-print-icon">📭</div>
-                  <p>Tidak ada aktivitas kebersihan yang tercatat untuk area dan tanggal ini.</p>
+                  <p class="empty-title">Tidak Ada Aktivitas Tercatat</p>
+                  <p class="empty-desc">Tidak ditemukan data ceklist kebersihan pada area dan periode terpilih.</p>
                 </div>
 
-                <div v-else v-for="(act, idx) in dailyActivities" :key="act.id" class="activity-print-section">
-                  <div class="activity-print-header">
+                <div v-else v-for="(act, idx) in dailyActivities" :key="act.id" class="activity-print-section mb-6">
+                  <div class="activity-print-header mb-4">
                     <div class="activity-print-shift">Petugas: {{ act.user?.name || '-' }}</div>
                     <div class="activity-print-details">
                       <span>Tanggal: <b>{{ formatIndoShortDate(act.date) }}</b></span>
@@ -680,70 +657,80 @@ function calculateDuration(start: string, end: string): number | string {
                     </div>
                   </div>
 
-                  <table class="checklist-table-details">
-                    <thead>
-                      <tr>
-                        <th width="40">NO</th>
-                        <th width="200">RUANGAN / BAGIAN</th>
-                        <th>ITEM KEBERSIHAN</th>
-                        <th width="120">STATUS</th>
-                        <th width="120">WAKTU CEK</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="(item, itemIdx) in act.items" :key="item.id">
-                        <td>{{ itemIdx + 1 }}</td>
-                        <td class="text-left font-medium">{{ item.area_object?.room_name || 'Umum' }}</td>
-                        <td class="text-left">{{ item.area_object?.cleaning_object?.name || '-' }}</td>
-                        <td class="text-center">
-                          <span :class="item.is_checked ? 'status-clean' : 'status-dirty'">
-                            {{ item.is_checked ? '✓ Bersih' : '✗ Kotor' }}
-                          </span>
-                        </td>
-                        <td class="text-center">{{ item.checked_at ? formatTimeOnly(item.checked_at) : '-' }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <div class="activity-print-notes" v-if="act.notes">
-                    <b>Catatan Kendala/Keterangan:</b>
-                    <p>{{ act.notes }}</p>
+                  <div class="table-responsive mb-4">
+                    <table class="checklist-table-details">
+                      <thead>
+                        <tr>
+                          <th width="50">NO</th>
+                          <th width="240">RUANGAN / BAGIAN</th>
+                          <th>ITEM KEBERSIHAN</th>
+                          <th width="140">STATUS</th>
+                          <th width="140">WAKTU CEK</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(item, itemIdx) in act.items" :key="item.id">
+                          <td class="text-center font-semibold">{{ itemIdx + 1 }}</td>
+                          <td class="text-left font-medium text-foreground">{{ item.area_object?.room_name || 'Umum' }}</td>
+                          <td class="text-left text-muted-fg">{{ item.area_object?.cleaning_object?.name || '-' }}</td>
+                          <td class="text-center">
+                            <span :class="item.is_checked ? 'status-clean-badge' : 'status-dirty-badge'">
+                              {{ item.is_checked ? '✓ Bersih' : '✗ Kotor' }}
+                            </span>
+                          </td>
+                          <td class="text-center font-mono text-xs">{{ item.checked_at ? formatTimeOnly(item.checked_at) : '-' }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
 
-                  <div class="activity-print-photos">
+                  <div class="activity-print-notes mb-4" v-if="act.notes">
+                    <span class="notes-icon">📝</span>
+                    <div>
+                      <span class="font-bold block text-xs uppercase tracking-wider text-warning mb-1">Catatan Kendala / Keterangan</span>
+                      <p class="text-sm m-0 text-muted-fg">{{ act.notes }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Photos Grid (Premium layout with nice cards) -->
+                  <div class="activity-print-photos mb-4">
                     <div class="photo-print-column">
-                      <h4>Foto Sebelum Kerja (Before)</h4>
+                      <h4 class="photo-section-title">Foto Sebelum Kerja (Before)</h4>
                       <div class="photo-print-wrapper">
                         <div v-if="getPhotosByType(act.photos, 'before').length === 0" class="no-photo-text">
-                          Tidak ada foto Before
+                          <span class="no-photo-icon">📷</span> Tidak ada foto Before
                         </div>
-                        <img v-for="photo in getPhotosByType(act.photos, 'before')" :key="photo.id"
-                             :src="`${apiBaseUrl}/storage/${photo.file_path}`" alt="Before" class="photo-print-el" />
+                        <div v-else class="photo-gallery">
+                          <img v-for="photo in getPhotosByType(act.photos, 'before')" :key="photo.id"
+                               :src="`${apiBaseUrl}/storage/${photo.file_path}`" alt="Before" class="photo-print-el" />
+                        </div>
                       </div>
                     </div>
                     
                     <div class="photo-print-column">
-                      <h4>Foto Sesudah Kerja (After)</h4>
+                      <h4 class="photo-section-title">Foto Sesudah Kerja (After)</h4>
                       <div class="photo-print-wrapper">
                         <div v-if="getPhotosByType(act.photos, 'after').length === 0" class="no-photo-text">
-                          Tidak ada foto After
+                          <span class="no-photo-icon">📷</span> Tidak ada foto After
                         </div>
-                        <img v-for="photo in getPhotosByType(act.photos, 'after')" :key="photo.id"
-                             :src="`${apiBaseUrl}/storage/${photo.file_path}`" alt="After" class="photo-print-el" />
+                        <div v-else class="photo-gallery">
+                          <img v-for="photo in getPhotosByType(act.photos, 'after')" :key="photo.id"
+                               :src="`${apiBaseUrl}/storage/${photo.file_path}`" alt="After" class="photo-print-el" />
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   <div class="print-signatures">
                     <div class="signature-box">
-                      <p>Petugas Cleaning Service</p>
+                      <p class="sig-title">Petugas Cleaning Service</p>
                       <div class="signature-line"></div>
-                      <p class="font-bold">{{ act.user?.name || '........................' }}</p>
+                      <p class="font-bold text-foreground">{{ act.user?.name || '........................' }}</p>
                     </div>
                     <div class="signature-box">
-                      <p>Penanggung Jawab (PJ) Unit</p>
+                      <p class="sig-title">Penanggung Jawab (PJ) Unit</p>
                       <div class="signature-line"></div>
-                      <p class="font-bold">........................................</p>
+                      <p class="font-bold text-foreground">........................................</p>
                     </div>
                   </div>
                 </div>
@@ -751,12 +738,12 @@ function calculateDuration(start: string, end: string): number | string {
             </div>
             
             <div class="modal-footer">
-              <button class="btn btn-ghost" @click="showDailyModal = false">Tutup</button>
-              <button v-if="dailyActivities.length > 0" class="btn btn-secondary excel-btn-modal" @click="exportDailyToExcel">
+              <button class="btn btn-ghost btn-sm" @click="showDailyModal = false">Tutup</button>
+              <button v-if="dailyActivities.length > 0" class="btn btn-secondary excel-btn-modal btn-sm" @click="exportDailyToExcel">
                 🟢 Ekspor ke Excel (.xls)
               </button>
-              <button v-if="dailyActivities.length > 0" class="btn btn-primary" @click="printDailyReport">
-                🖨️ Cetak Laporan / Simpan PDF
+              <button v-if="dailyActivities.length > 0" class="btn btn-primary btn-sm" @click="printDailyReport">
+                🖨️ Cetak / Simpan PDF
               </button>
             </div>
           </div>
@@ -813,37 +800,62 @@ function calculateDuration(start: string, end: string): number | string {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+}
+
+.header-icon-badge {
+  background: hsl(var(--primary) / 0.15);
+  font-size: 2rem;
+  padding: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--primary) / 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .page-title {
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 850;
   line-height: 2rem;
   color: hsl(var(--foreground));
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .page-subtitle {
   color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
-  margin-top: 0.25rem;
+  margin-top: 0.125rem;
 }
 
-/* ===== Filter Card ===== */
+/* ===== Glassmorphic Filter Card ===== */
 .filter-card {
-  background: hsl(var(--card) / 0.95);
-  border: 1px solid hsl(var(--primary) / 0.3);
+  background: hsl(var(--card) / 0.75);
+  border: 1px solid hsl(var(--border));
+  backdrop-filter: blur(12px);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.filter-card:hover {
+  border-color: hsl(var(--primary) / 0.25);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
 .filter-title {
-  font-weight: 700;
-  margin-bottom: 1rem;
+  font-weight: 800;
+  margin-bottom: 1.25rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
+  gap: 0.625rem;
+  font-size: 1.05rem;
   color: hsl(var(--foreground));
+}
+
+.title-icon-wrapper {
+  background: hsl(var(--primary) / 0.1);
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.5rem;
 }
 
 .filter-row {
@@ -855,31 +867,90 @@ function calculateDuration(start: string, end: string): number | string {
   flex: 1;
 }
 
+.filter-field .label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8rem;
+  font-weight: 750;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 0.5rem;
+}
+
+.input-icon {
+  font-size: 0.95rem;
+}
+
+.select-wrapper {
+  position: relative;
+}
+
 .select-input {
   width: 100%;
+  appearance: none;
+  background: hsl(var(--input) / 0.3);
+  border: 1px solid hsl(var(--border));
+  padding: 0.625rem 2rem 0.625rem 0.875rem;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.select-input:focus {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--card));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.15);
+  outline: none;
+}
+
+/* Custom Select Arrow */
+.select-wrapper::after {
+  content: '▼';
+  font-size: 0.65rem;
+  color: hsl(var(--muted-foreground));
+  position: absolute;
+  right: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .label-hint {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  font-weight: 400;
+  font-size: 0.725rem;
+  color: hsl(var(--muted-foreground) / 0.7);
+  font-weight: 500;
 }
 
 .period-indicator {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  margin-top: 1rem;
-  padding: 0.5rem 0.75rem;
-  background: hsl(var(--primary) / 0.06);
-  border: 1px solid hsl(var(--primary) / 0.15);
-  border-radius: 0.375rem;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding: 0.625rem 1rem;
+  background: hsl(var(--primary) / 0.08);
+  border: 1px solid hsl(var(--primary) / 0.2);
+  border-radius: 0.625rem;
   font-size: 0.8125rem;
   color: hsl(var(--muted-foreground));
+  position: relative;
+  overflow: hidden;
+}
+
+.period-indicator-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 3px;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 8px hsl(var(--primary));
 }
 
 .period-indicator-icon {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
 }
 
 /* ===== Export Grid ===== */
@@ -894,22 +965,23 @@ function calculateDuration(start: string, end: string): number | string {
   flex-direction: column;
   justify-content: space-between;
   padding: 1.5rem;
-  border-radius: 1rem;
-  background: hsl(var(--card));
+  border-radius: 1.25rem;
+  background: hsl(var(--card) / 0.8);
   border: 1px solid hsl(var(--border));
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(10px);
 }
 
 .export-card:hover {
-  transform: translateY(-2px);
-  border-color: hsl(var(--primary) / 0.4);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  transform: translateY(-3px);
+  border-color: hsl(var(--primary) / 0.35);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
 }
 
 .export-card-featured {
   border-color: hsl(var(--primary) / 0.2);
-  background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--primary) / 0.03));
+  background: linear-gradient(135deg, hsl(var(--card) / 0.9), hsl(var(--primary) / 0.04));
 }
 
 .export-card-body {
@@ -920,13 +992,13 @@ function calculateDuration(start: string, end: string): number | string {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.75rem;
 }
 
 .export-title {
-  font-size: 1.125rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 800;
   color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
 }
 
 .export-title-gradient {
@@ -938,37 +1010,37 @@ function calculateDuration(start: string, end: string): number | string {
 
 .format-badge {
   font-size: 0.65rem;
-  font-weight: 800;
-  padding: 0.1875rem 0.5rem;
+  font-weight: 850;
+  padding: 0.25rem 0.625rem;
   border-radius: 9999px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   flex-shrink: 0;
 }
 
-.format-badge.csv {
-  background: hsl(210, 80%, 15%);
-  color: hsl(210, 80%, 65%);
-  border: 1px solid hsl(210, 80%, 30%);
+.format-badge-accent {
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.25);
+  box-shadow: 0 2px 6px hsl(var(--primary) / 0.05);
 }
 
-.format-badge.xls {
-  background: hsl(142, 70%, 15%);
-  color: hsl(142, 70%, 65%);
-  border: 1px solid hsl(142, 70%, 30%);
-}
-
-.export-desc {
-  min-height: 60px;
+.format-badge-success {
+  background: hsl(var(--success) / 0.12);
+  color: hsl(var(--success));
+  border: 1px solid hsl(var(--success) / 0.25);
+  box-shadow: 0 2px 6px hsl(var(--success) / 0.05);
 }
 
 .export-desc p {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: hsl(var(--muted-foreground));
-  line-height: 1.5;
+  line-height: 1.55;
+  margin: 0;
 }
 
 .export-card-footer {
-  margin-top: 1.5rem;
+  border-top: 1px solid hsl(var(--border) / 0.5);
+  padding-top: 1.25rem;
 }
 
 .export-btn {
@@ -977,6 +1049,117 @@ function calculateDuration(start: string, end: string): number | string {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  padding: 0.625rem;
+  border-radius: 0.625rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.export-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== iOS Style Pill Tabs ===== */
+.filter-mode-tabs {
+  display: flex;
+  background: hsl(var(--input) / 0.4);
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+  gap: 0.125rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  border-radius: 0.625rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+}
+
+.tab-btn:hover {
+  color: hsl(var(--foreground));
+}
+
+.tab-btn.active {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.today-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: hsl(var(--primary) / 0.05);
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--primary) / 0.15);
+}
+
+.today-dot {
+  width: 6px;
+  height: 6px;
+  background: hsl(var(--primary));
+  border-radius: 50%;
+  animation: pulse 1.8s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 hsl(var(--primary) / 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 5px hsl(var(--primary) / 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+}
+
+.mode-input-container {
+  margin-top: 0.75rem;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.inline-flex-container {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.flex-field {
+  flex: 1;
+}
+
+.flex-field .label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 0.375rem;
+}
+
+.date-input-full {
+  width: 100%;
+  background: hsl(var(--input) / 0.3);
+  border: 1px solid hsl(var(--border));
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.625rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  transition: border-color 0.2s ease;
+}
+
+.date-input-full:focus {
+  border-color: hsl(var(--primary));
+  outline: none;
 }
 
 /* ===== Download Meta ===== */
@@ -984,29 +1167,47 @@ function calculateDuration(start: string, end: string): number | string {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.75rem;
+  font-size: 0.725rem;
   color: hsl(var(--success));
-  margin-bottom: 0.5rem;
+  font-weight: 600;
 }
 
 .download-meta-icon {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .matrix-info {
-  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
 }
 
-.selected-area {
-  font-size: 0.8125rem;
+.selected-area-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
   color: hsl(var(--foreground));
-  margin-bottom: 0.375rem;
+  background: hsl(var(--success) / 0.06);
+  border: 1px solid hsl(var(--success) / 0.15);
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.5rem;
 }
 
-.area-warning {
-  font-size: 0.8125rem;
-  color: hsl(var(--destructive));
-  font-weight: 700;
+.badge-dot {
+  width: 5px;
+  height: 5px;
+  background: hsl(var(--success));
+  border-radius: 50%;
+}
+
+.area-warning-badge {
+  font-size: 0.75rem;
+  color: hsl(var(--warning));
+  background: hsl(var(--warning) / 0.05);
+  border: 1px solid hsl(var(--warning) / 0.15);
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
 }
 
 /* ===== Spinner ===== */
@@ -1025,72 +1226,61 @@ function calculateDuration(start: string, end: string): number | string {
   to { transform: rotate(360deg); }
 }
 
-/* ===== Responsive ===== */
+/* ===== Responsive (Mobile UI adjustments) ===== */
 @media (max-width: 768px) {
-  .export-grid {
-    grid-template-columns: 1fr;
+  .reports-header {
+    margin-bottom: 1.25rem;
+  }
+  
+  .header-icon-badge {
+    font-size: 1.5rem;
+    padding: 0.375rem;
+  }
+  
+  .page-title {
+    font-size: 1.35rem;
+  }
+
+  .filter-card {
+    padding: 1.25rem;
   }
 
   .filter-row {
     flex-direction: column;
     gap: 1rem;
   }
-}
+  
+  .area-select-field {
+    width: 100%;
+  }
 
-/* Filter Mode Tabs */
-.filter-mode-tabs {
-  display: flex;
-  background: hsl(var(--muted));
-  padding: 0.25rem;
-  border-radius: 0.5rem;
-  gap: 0.25rem;
-}
+  .export-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 
-.tab-btn {
-  flex: 1;
-  background: transparent;
-  border: none;
-  padding: 0.375rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: hsl(var(--muted-foreground));
-  border-radius: 0.375rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-}
+  .export-card {
+    padding: 1.25rem;
+  }
 
-.tab-btn:hover {
-  color: hsl(var(--foreground));
-}
+  .inline-flex-container {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
 
-.tab-btn.active {
-  background: hsl(var(--card));
-  color: hsl(var(--foreground));
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.mode-input-container {
-  margin-top: 0.75rem;
-}
-
-.inline-flex-container {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.flex-field {
-  flex: 1;
+  .year-flex-field {
+    width: 100% !important;
+  }
 }
 </style>
 
 <style>
-/* ===== Daily Modal (Global for Teleport) ===== */
+/* ===== Daily Modal (Global/Teleport Styles) ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(4, 8, 15, 0.75);
+  backdrop-filter: blur(12px);
   z-index: 99999;
   display: flex;
   align-items: center;
@@ -1099,17 +1289,19 @@ function calculateDuration(start: string, end: string): number | string {
 }
 
 .modal-content {
-  background: hsl(var(--card));
+  background: hsl(var(--card) / 0.95);
   border: 1px solid hsl(var(--border));
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   width: 100%;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  backdrop-filter: blur(20px);
 }
 
 .modal-xl {
-  max-width: 950px;
+  max-width: 980px;
   max-height: 90vh;
 }
 
@@ -1117,15 +1309,21 @@ function calculateDuration(start: string, end: string): number | string {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid hsl(var(--border));
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  background: hsl(var(--card) / 0.5);
+}
+
+.modal-title-icon {
+  font-size: 1.25rem;
 }
 
 .modal-title {
-  font-size: 1.125rem;
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 800;
   color: hsl(var(--foreground));
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .modal-close {
@@ -1135,17 +1333,18 @@ function calculateDuration(start: string, end: string): number | string {
   align-items: center;
   justify-content: center;
   border: 1px solid hsl(var(--border));
-  background: hsl(var(--muted));
-  border-radius: 0.375rem;
+  background: hsl(var(--muted) / 0.5);
+  border-radius: 0.5rem;
   cursor: pointer;
   color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .modal-close:hover {
-  background: hsl(var(--destructive) / 0.1);
+  background: hsl(var(--destructive) / 0.15);
   color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.25);
 }
 
 .modal-body {
@@ -1162,10 +1361,8 @@ function calculateDuration(start: string, end: string): number | string {
   justify-content: flex-end;
   gap: 0.75rem;
   padding: 1rem 1.5rem;
-  border-top: 1px solid hsl(var(--border));
+  border-top: 1px solid hsl(var(--border) / 0.5);
   background: hsl(var(--muted) / 0.2);
-  border-bottom-left-radius: 1rem;
-  border-bottom-right-radius: 1rem;
 }
 
 .btn-ghost {
@@ -1174,54 +1371,56 @@ function calculateDuration(start: string, end: string): number | string {
   color: hsl(var(--foreground));
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
 }
+
 .btn-ghost:hover {
   background: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 .excel-btn-modal {
-  background-color: hsl(142, 70%, 15%) !important;
+  background: hsl(142, 60%, 15%) !important;
   color: hsl(142, 70%, 75%) !important;
-  border: 1px solid hsl(142, 70%, 30%) !important;
-  transition: all 0.2s;
-}
-.excel-btn-modal:hover {
-  background-color: hsl(142, 70%, 20%) !important;
-  color: hsl(142, 70%, 85%) !important;
+  border: 1px solid hsl(142, 60%, 30%) !important;
+  font-weight: 700;
+  transition: all 0.2s ease;
 }
 
-/* ===== Print Report Area Stylings ===== */
+.excel-btn-modal:hover {
+  background: hsl(142, 60%, 20%) !important;
+  color: hsl(142, 70%, 85%) !important;
+  box-shadow: 0 4px 12px hsl(142, 60%, 10% / 0.3);
+}
+
+/* ===== Print preview layout ===== */
+#daily-print-area {
+  padding: 0.5rem;
+}
+
 .print-header-report {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   border-bottom: 2px solid hsl(var(--foreground));
-  padding-bottom: 1rem;
+  padding-bottom: 1.25rem;
   margin-bottom: 1.5rem;
 }
 
-.print-logo {
-  display: flex;
-}
-
 .print-logo-img {
-  height: 50px;
+  height: 48px;
   width: auto;
   object-fit: contain;
 }
 
-.print-meta-info {
-  text-align: right;
-}
-
 .print-meta-info h2 {
-  font-size: 1.25rem;
-  font-weight: 800;
+  font-size: 1.15rem;
+  font-weight: 850;
   margin: 0 0 0.5rem 0;
   color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
 }
 
 .meta-print-table {
@@ -1231,172 +1430,208 @@ function calculateDuration(start: string, end: string): number | string {
 
 .meta-print-table td {
   border: none !important;
-  padding: 0.125rem 0.25rem;
-  font-size: 0.8125rem;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.8rem;
   text-align: left;
 }
 
 .empty-print-state {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 4rem 1.5rem;
   color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted) / 0.1);
+  border-radius: 1rem;
+  border: 1px dashed hsl(var(--border));
 }
 
 .empty-print-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.7;
+}
+
+.empty-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: hsl(var(--foreground));
+  margin: 0;
+}
+
+.empty-desc {
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  margin-top: 0.25rem;
 }
 
 .activity-print-section {
-  margin-bottom: 2.5rem;
   border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   padding: 1.25rem;
-  background: hsl(var(--card));
+  background: hsl(var(--card) / 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
 }
 
 .activity-print-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: hsl(var(--primary) / 0.06);
-  border: 1px solid hsl(var(--primary) / 0.12);
+  background: hsl(var(--primary) / 0.08);
+  border: 1px solid hsl(var(--primary) / 0.15);
   padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
+  border-radius: 0.625rem;
 }
 
 .activity-print-shift {
-  font-weight: 800;
-  font-size: 0.875rem;
+  font-weight: 850;
+  font-size: 0.75rem;
   background: hsl(var(--primary));
   color: white;
   padding: 0.25rem 0.75rem;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .activity-print-details {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-size: 0.8125rem;
+  font-size: 0.8rem;
   color: hsl(var(--muted-foreground));
-}
-
-.divider {
-  color: hsl(var(--border));
-}
-
-.text-late {
-  color: hsl(var(--destructive));
-}
-
-.text-ontime {
-  color: hsl(var(--success));
 }
 
 .checklist-table-details {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 1rem;
-  font-size: 0.8125rem;
+  font-size: 0.8rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
 }
 
 .checklist-table-details th,
 .checklist-table-details td {
-  border: 1px solid hsl(var(--border));
-  padding: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.6);
+  padding: 0.625rem;
 }
 
 .checklist-table-details th {
-  background: hsl(var(--muted) / 0.5);
-  font-weight: 700;
+  background: hsl(var(--muted) / 0.6);
+  font-weight: 800;
   text-align: center;
+  color: hsl(var(--foreground));
 }
 
-.font-medium {
-  font-weight: 500;
-}
-
-.status-clean {
+.status-clean-badge {
+  background: hsl(var(--success) / 0.12);
   color: hsl(var(--success));
-  font-weight: 700;
+  border: 1px solid hsl(var(--success) / 0.25);
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.725rem;
+  font-weight: 800;
+  display: inline-block;
 }
 
-.status-dirty {
+.status-dirty-badge {
+  background: hsl(var(--destructive) / 0.12);
   color: hsl(var(--destructive));
-  font-weight: 700;
+  border: 1px solid hsl(var(--destructive) / 0.25);
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.725rem;
+  font-weight: 800;
+  display: inline-block;
 }
 
 .activity-print-notes {
-  background: hsl(var(--muted) / 0.3);
-  border-left: 3px solid hsl(var(--warning));
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  margin-bottom: 1.25rem;
+  background: hsl(var(--warning) / 0.06);
+  border: 1px solid hsl(var(--warning) / 0.18);
+  border-left: 4px solid hsl(var(--warning));
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  display: flex;
+  gap: 0.75rem;
 }
 
-.activity-print-notes p {
-  margin: 0.25rem 0 0 0;
+.notes-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
 }
 
 .activity-print-photos {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 1.25rem;
 }
 
-.photo-print-column h4 {
+.photo-section-title {
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 800;
   margin: 0 0 0.5rem 0;
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
 }
 
 .photo-print-wrapper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
   background: hsl(var(--muted) / 0.2);
   border: 1px dashed hsl(var(--border));
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  min-height: 120px;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  min-height: 140px;
+  display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
+}
+
+.photo-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  width: 100%;
 }
 
 .photo-print-el {
-  height: 100px;
-  width: calc(50% - 0.25rem);
-  min-width: 80px;
-  max-width: 150px;
+  height: 110px;
+  width: 100%;
   object-fit: cover;
-  border-radius: 0.25rem;
+  border-radius: 0.5rem;
   border: 1px solid hsl(var(--border));
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .photo-print-el:hover {
-  transform: scale(1.05);
+  transform: scale(1.04);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
 }
 
 .no-photo-text {
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.no-photo-icon {
+  font-size: 1.25rem;
+  opacity: 0.5;
 }
 
 .print-signatures {
   display: flex;
   justify-content: space-between;
   margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px dashed hsl(var(--border));
+  padding-top: 1.25rem;
+  border-top: 1px dashed hsl(var(--border) / 0.6);
 }
 
 .signature-box {
@@ -1404,20 +1639,16 @@ function calculateDuration(start: string, end: string): number | string {
   text-align: center;
 }
 
-.signature-box p {
+.sig-title {
   font-size: 0.75rem;
   margin: 0;
   color: hsl(var(--muted-foreground));
+  font-weight: 700;
 }
 
 .signature-line {
-  height: 50px;
+  height: 55px;
   margin-bottom: 0.25rem;
-}
-
-.font-bold {
-  font-weight: 700;
-  color: hsl(var(--foreground)) !important;
 }
 
 /* Animations */
@@ -1443,14 +1674,81 @@ function calculateDuration(start: string, end: string): number | string {
   to { transform: scale(0.95); opacity: 0; }
 }
 
+/* Modal printing responsive */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 0.75rem;
+  }
+  
+  .modal-xl {
+    max-height: 95vh;
+  }
+
+  .modal-content {
+    border-radius: 1rem;
+  }
+
+  .modal-body {
+    padding: 1rem;
+  }
+
+  .print-header-report {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+  }
+
+  .print-meta-info {
+    text-align: center;
+  }
+
+  .meta-print-table {
+    margin: 0.5rem auto 0 auto;
+  }
+
+  .activity-print-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  .activity-print-details {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .activity-print-details .divider {
+    display: none;
+  }
+
+  .activity-print-photos {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .photo-gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .print-signatures {
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+  }
+
+  .signature-box {
+    width: 80%;
+  }
+}
+
 /* ===== Printing Media Queries ===== */
 @media print {
-  /* Hide main app wrapper completely to avoid background leaks and blank spaces */
   #app {
     display: none !important;
   }
   
-  /* Reset modal overlay container for printing */
   .modal-overlay {
     position: absolute !important;
     inset: 0 !important;
@@ -1472,7 +1770,6 @@ function calculateDuration(start: string, end: string): number | string {
     display: block !important;
   }
 
-  /* Hide print controls, headers, footers and close buttons */
   .modal-header,
   .modal-footer,
   .modal-close,
@@ -1535,12 +1832,16 @@ function calculateDuration(start: string, end: string): number | string {
     print-color-adjust: exact;
   }
 
-  .status-clean {
+  .status-clean-badge {
     color: #008000 !important;
+    background: transparent !important;
+    border: none !important;
   }
 
-  .status-dirty {
+  .status-dirty-badge {
     color: #ff0000 !important;
+    background: transparent !important;
+    border: none !important;
   }
 
   .photo-print-wrapper {
