@@ -1798,13 +1798,13 @@ function calculateDuration(start: string, end: string): number | string {
   }
 }
 
+@page {
+  size: A4 portrait;
+  margin: 20mm 15mm;
+}
+
 /* ===== Printing Media Queries ===== */
 @media print {
-  @page {
-    size: A4 portrait;
-    margin: 20mm 15mm;
-  }
-
   #app {
     display: none !important;
   }

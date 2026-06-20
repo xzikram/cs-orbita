@@ -1225,12 +1225,12 @@ function logoutAudit() {
   margin-bottom: 0.5rem;
 }
 
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 20mm 15mm;
-  }
+@page {
+  size: A4 portrait;
+  margin: 20mm 15mm;
+}
 
+@media print {
   body * {
     visibility: hidden;
   }
