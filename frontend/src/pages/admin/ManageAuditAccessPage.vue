@@ -9,6 +9,13 @@ const activeTab = ref<'links' | 'approvals' | 'logs'>('links')
 const links = ref<any[]>([])
 const pendingSessions = ref<any[]>([])
 const logs = ref<any[]>([])
+const areasList = ref<any[]>([])
+
+const monthNames: Record<number, string> = {
+  1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April',
+  5: 'Mei', 6: 'Juni', 7: 'Juli', 8: 'Agustus',
+  9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+}
 
 const newExpiresAt = ref('')
 const isGenerating = ref(false)
@@ -64,6 +71,15 @@ async function fetchLogs() {
     showToast('Gagal memuat log audit.', 'error')
   } finally {
     isLoadingLogs.value = false
+  }
+}
+
+async function fetchAreasList() {
+  try {
+    const res = await api.get('/api/v1/areas')
+    areasList.value = res.data.data || res.data
+  } catch (err) {
+    // Ignore
   }
 }
 
@@ -161,14 +177,33 @@ function formatDetails(details: any) {
   }
   
   const parts = []
-  if (details.area_name) parts.push(`Area: ${details.area_name}`)
-  if (details.month && details.year) {
-    parts.push(`Periode: ${details.month}/${details.year}`)
-  } else if (details.date) {
-    parts.push(`Tanggal: ${details.date}`)
+  
+  // Show area name directly
+  let areaName = details.area_name
+  if (!areaName && details.area_id) {
+    const area = areasList.value.find(a => a.id == details.area_id)
+    if (area) {
+      areaName = area.name
+    } else {
+      areaName = `Area #${details.area_id}`
+    }
   }
   
-  return parts.length > 0 ? parts.join(', ') : JSON.stringify(details)
+  if (areaName) {
+    parts.push(`Area: ${areaName}`)
+  }
+  
+  // Show date / period details
+  if (details.month && details.year) {
+    const mName = monthNames[details.month] || details.month
+    parts.push(`Periode: ${mName} ${details.year}`)
+  } else if (details.date) {
+    parts.push(`Tanggal: ${details.date}`)
+  } else if (details.start_date && details.end_date) {
+    parts.push(`Rentang: ${details.start_date} s/d ${details.end_date}`)
+  }
+  
+  return parts.length > 0 ? parts.join(' | ') : JSON.stringify(details)
 }
 
 // Real-time events
@@ -176,6 +211,7 @@ onMounted(() => {
   fetchLinks()
   fetchPendingSessions()
   fetchLogs()
+  fetchAreasList()
 
   // Subscribe to channel
   echo.private('admin-approvals')
