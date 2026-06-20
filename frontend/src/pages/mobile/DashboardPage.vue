@@ -24,11 +24,7 @@ const activeProgresses = ref<Array<{
   is_offline?: boolean
 }>>([])
 
-// PWA installation states
-const isMobile = ref(false)
-const pwaPlatform = ref<'android' | 'ios' | 'other'>('other')
-const showInstallBanner = ref(false)
-const deferredPrompt = ref<any>(null)
+
 
 async function fetchDashboardData() {
   loading.value = true
@@ -141,116 +137,17 @@ function startScan() {
   router.push({ name: 'mobile-scan' })
 }
 
-// PWA Install helper methods
-function checkPlatform() {
-  const ua = navigator.userAgent.toLowerCase()
-  const isAndroid = ua.indexOf('android') > -1
-  const isIos = /ipad|iphone|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  
-  if (isAndroid) {
-    pwaPlatform.value = 'android'
-  } else if (isIos) {
-    pwaPlatform.value = 'ios'
-  } else {
-    pwaPlatform.value = 'other'
-  }
-  
-  isMobile.value = isAndroid || isIos
 
-  const dismissed = localStorage.getItem('pwa_install_dismissed') === 'true'
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone
-  
-  showInstallBanner.value = !isStandalone && !dismissed
-}
-
-function setupInstallPrompt() {
-  if ((window as any).deferredPrompt) {
-    deferredPrompt.value = (window as any).deferredPrompt
-  }
-  
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault()
-    deferredPrompt.value = e
-  })
-}
-
-async function triggerNativeInstall() {
-  const promptEvent = deferredPrompt.value
-  if (!promptEvent) return
-  
-  promptEvent.prompt()
-  const { outcome } = await promptEvent.userChoice
-  if (outcome === 'accepted') {
-    showInstallBanner.value = false
-  }
-  deferredPrompt.value = null
-}
-
-function dismissInstallBanner() {
-  localStorage.setItem('pwa_install_dismissed', 'true')
-  showInstallBanner.value = false
-}
 
 onMounted(() => {
   fetchDashboardData()
   checkOfflineQueue()
-  checkPlatform()
-  setupInstallPrompt()
 })
 </script>
 
 <template>
   <div class="mobile-dashboard">
-    <!-- PWA Install Banner -->
-    <div v-if="showInstallBanner" class="card install-banner-card mb-4 animate-slide-up">
-      <div class="install-banner-header">
-        <div class="flex items-center gap-3">
-          <span class="app-icon-badge">📲</span>
-          <div>
-            <h3 class="text-sm font-bold">Instal Aplikasi CleanTrack</h3>
-            <p class="text-xs text-muted-foreground">Jadikan aplikasi lebih cepat & mudah diakses di HP.</p>
-          </div>
-        </div>
-        <button class="close-banner-btn" @click="dismissInstallBanner" title="Sembunyikan">✕</button>
-      </div>
 
-      <div class="install-instructions mt-3">
-        <!-- iOS Guide -->
-        <template v-if="pwaPlatform === 'ios'">
-          <p class="instruction-title"><b>Cara pasang di iPhone (Safari):</b></p>
-          <ol class="instruction-list">
-            <li>Tekan tombol <b>Bagikan/Share</b> <span class="badge-icon">📤</span> di bar menu bawah Safari.</li>
-            <li>Scroll ke bawah lalu ketuk <b>"Tambahkan ke Layar Utama"</b> / <b>"Add to Home Screen"</b> <span class="badge-icon">➕</span>.</li>
-            <li>Pilih <b>"Tambah"</b> / <b>"Add"</b> di pojok kanan atas layar.</li>
-          </ol>
-        </template>
-
-        <!-- Android Guide -->
-        <template v-else-if="pwaPlatform === 'android'">
-          <div v-if="deferredPrompt" class="flex flex-col gap-2">
-            <button class="btn btn-primary text-xs w-full py-2 flex items-center justify-center gap-2" @click="triggerNativeInstall">
-              <span>📲</span> Pasang Aplikasi Sekarang
-            </button>
-          </div>
-          <div v-else>
-            <p class="instruction-title"><b>Cara pasang di Android (Chrome):</b></p>
-            <ol class="instruction-list">
-              <li>Ketuk ikon <b>Menu</b> <span class="badge-icon">⋮</span> di pojok kanan atas Chrome.</li>
-              <li>Pilih opsi <b>"Instal Aplikasi"</b> atau <b>"Tambahkan ke Layar Utama"</b>.</li>
-              <li>Konfirmasi pemasangan aplikasi.</li>
-            </ol>
-          </div>
-        </template>
-
-        <!-- Fallback/Desktop Guide -->
-        <template v-else>
-          <p class="instruction-title"><b>Cara pasang di Browser:</b></p>
-          <p class="instruction-desc text-xs text-muted-foreground">
-            Tekan tombol 📥 <b>Pasang Aplikasi</b> di bagian kolom alamat URL browser Anda.
-          </p>
-        </template>
-      </div>
-    </div>
 
     <!-- Sync Card -->
     <div v-if="pendingSyncCount > 0" class="card sync-card mb-4 animate-slide-up">
