@@ -281,23 +281,29 @@ function exportDailyToExcel() {
   })
 
   html += `
+          <!-- Spacer row -->
+          <tr>
+            <td colspan="5" style="border:none; height:20px;"></td>
+          </tr>
+          <!-- Legend and PJ row -->
+          <tr>
+            <td colspan="2" style="border:none;" class="text-left">
+              Ket: ✓ = Bersih / ✗ = Kotor
+            </td>
+            <td style="border:none;"></td>
+            <td colspan="2" style="border:none;" class="text-center bold">PJ ${areaName.toUpperCase()}</td>
+          </tr>
+          <!-- Signature space row -->
+          <tr>
+            <td colspan="5" style="border:none; height:40px;"></td>
+          </tr>
+          <!-- Signatures row -->
+          <tr>
+            <td colspan="2" style="border:none;" class="text-left bold">(Housekeeping RS)</td>
+            <td style="border:none;"></td>
+            <td colspan="2" style="border:none;" class="text-center bold">........................................</td>
+          </tr>
         </tbody>
-      </table>
-      <br>
-      <table style="border:none;">
-        <tr>
-          <td colspan="2" style="border:none;" class="text-left">
-            Ket : ✓ / ✗
-          </td>
-          <td style="border:none;"></td>
-          <td colspan="2" style="border:none;" class="text-center bold">PJ ${areaName.toUpperCase()}</td>
-        </tr>
-        <tr><td colspan="5" style="border:none; height:40px;"></td></tr>
-        <tr>
-          <td colspan="2" style="border:none;" class="text-left bold">(Housekeeping RS)</td>
-          <td style="border:none;"></td>
-          <td colspan="2" style="border:none;" class="text-center bold">........................................</td>
-        </tr>
       </table>
     </body>
     </html>
