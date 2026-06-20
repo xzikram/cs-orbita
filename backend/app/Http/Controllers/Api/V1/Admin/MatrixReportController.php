@@ -63,12 +63,12 @@ class MatrixReportController extends Controller
         <head>
             <meta charset='utf-8'>
             <style>
-                table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; }
+                table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 10pt; }
                 th, td { border: 1px solid black; padding: 3px; text-align: center; }
                 .text-left { text-align: left; }
                 .text-center { text-align: center; }
                 .bold { font-weight: bold; }
-                .header-title { font-size: 14px; border: none; text-align: center; font-weight: bold; }
+                .header-title { font-size: 13pt; border: none; text-align: center; font-weight: bold; }
             </style>
         </head>
         <body>
