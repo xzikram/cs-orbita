@@ -275,11 +275,11 @@ function exportDailyToExcel() {
     <head>
       <meta charset="utf-8">
       <style>
-        table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; }
+        table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 10pt; }
         th, td { border: 1px solid black; padding: 5px; text-align: center; }
         .text-left { text-align: left; }
         .bold { font-weight: bold; }
-        .header-title { font-size: 14px; border: none; text-align: center; font-weight: bold; }
+        .header-title { font-size: 13pt; border: none; text-align: center; font-weight: bold; }
         .header-meta { border: none; text-align: left; font-weight: bold; }
         .shift-header { background-color: #d9e1f2; font-weight: bold; text-align: left; }
       </style>
