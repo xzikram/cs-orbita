@@ -53,10 +53,14 @@ class MatrixReportController extends Controller
 
         // Group objects by room
         $groupedObjects = $area->areaObjects->groupBy('room_name');
-
-        // Generate HTML
         $monthName = strtoupper($startDate->translatedFormat('F Y'));
         $areaName = strtoupper($area->name);
+
+        $logoUrl = asset('Logo RS JEC ORBITA.png');
+        $totalColumns = 3 + ($daysInMonth * 2);
+        $titleColspan = $totalColumns - 2;
+        $metaColspan = $totalColumns - 3;
+        $spacerColspan = ($daysInMonth * 2) - 5;
 
         $html = "
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -68,36 +72,57 @@ class MatrixReportController extends Controller
                 .text-left { text-align: left; }
                 .text-center { text-align: center; }
                 .bold { font-weight: bold; }
-                .header-title { font-size: 13pt; border: none; text-align: center; font-weight: bold; }
+                .header-title { font-size: 13pt; font-weight: bold; text-align: center; }
+                .subtitle { font-size: 11pt; font-weight: bold; color: red; text-align: center; }
             </style>
         </head>
         <body>
-            <table width='100%'>
-                <tr>
-                    <td colspan='" . (2 + ($daysInMonth * 2)) . "' class='header-title'>CEKLIST KEBERSIHAN CLEANING SERVICE RS JEC ORBITA MAKASSAR</td>
-                </tr>
-                <tr><td colspan='2' style='border:none;' class='text-left bold'>PERIODE : {$monthName}</td></tr>
-                <tr><td colspan='2' style='border:none;' class='text-left bold'>LOKASI : {$areaName}</td></tr>
-                <tr><td colspan='" . (2 + ($daysInMonth * 2)) . "' style='border:none;'></td></tr>
-            </table>
-
             <table border='1'>
                 <thead>
+                    <!-- Logo and Title Row -->
                     <tr>
-                        <th rowspan='2' width='30'>NO</th>
-                        <th rowspan='2' width='150'>Area</th>
-                        <th rowspan='2' width='150'>Area Dibersihkan</th>
-                        <th colspan='" . ($daysInMonth * 2) . "'>HARI/TANGGAL</th>
+                        <td rowspan='3' colspan='2' style='background-color: white; border: 1px solid black; text-align: center; vertical-align: middle;'>
+                            <img src='{$logoUrl}' height='50' width='120' alt='JEC Logo'>
+                        </td>
+                        <td colspan='{$titleColspan}' class='header-title' style='height: 25px; vertical-align: middle;'>
+                            CEKLIST KEBERSIHAN CLEANING SERVICE RS JEC ORBITA MAKASSAR
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan='{$titleColspan}' class='subtitle' style='height: 20px; vertical-align: middle;'>
+                            {$areaName}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan='{$titleColspan}' style='height: 15px;'>&nbsp;</td>
+                    </tr>
+                    <!-- Meta info Row 4 & 5 -->
+                    <tr>
+                        <td colspan='3' style='border: none; border-bottom: 1px solid black;' class='text-left bold'>LOKASI : {$areaName}</td>
+                        <td colspan='{$metaColspan}' style='border: none; border-bottom: 1px solid black;'>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td colspan='3' style='border: none; border-bottom: 1px solid black;' class='text-left bold'>PERIODE : {$monthName}</td>
+                        <td colspan='{$metaColspan}' style='border: none; border-bottom: 1px solid black;'>&nbsp;</td>
+                    </tr>
+                    <!-- Spacer Row -->
+                    <tr>
+                        <td colspan='{$totalColumns}' style='border: none; height: 10px;'>&nbsp;</td>
+                    </tr>
+                    <!-- Main headers -->
+                    <tr>
+                        <th rowspan='3' width='30'>NO</th>
+                        <th rowspan='3' width='150'>Area</th>
+                        <th rowspan='3' width='150'>Area Dibersihkan</th>
+                        <th colspan='" . ($daysInMonth * 2) . "'>TANGGAL</th>
                     </tr>
                     <tr>";
         
         for ($d = 1; $d <= $daysInMonth; $d++) {
-            $html .= "<th>{$d}</th><th></th>"; // Visual merge or just two columns? The screenshot has 1 | 2 for shifts under each date?
-            // Wait, screenshot shows day numbers are NOT there, it just says 1 2 1 2 1 2...
-            // Let's make it EXACTLY like screenshot: row for Dates?
-            // Actually screenshot has "HARI/TANGGAL" and then "1 | 2 | 1 | 2 | 1 | 2". 
+            $html .= "<th colspan='2'>{$d}</th>";
         }
-        $html .= "</tr><tr><th colspan='3'></th>";
+        $html .= "</tr>
+                    <tr>";
         for ($d = 1; $d <= $daysInMonth; $d++) {
             $html .= "<th>1</th><th>2</th>";
         }
@@ -122,8 +147,8 @@ class MatrixReportController extends Controller
                 $html .= "<td class='text-left'>" . strtolower($obj->cleaningObject->name) . "</td>";
 
                 for ($d = 1; $d <= $daysInMonth; $d++) {
-                    $chk1 = isset($data[$d][1][$obj->id]) ? 'v' : '';
-                    $chk2 = isset($data[$d][2][$obj->id]) ? 'v' : '';
+                    $chk1 = isset($data[$d][1][$obj->id]) ? '✓' : '&nbsp;';
+                    $chk2 = isset($data[$d][2][$obj->id]) ? '✓' : '&nbsp;';
                     $html .= "<td>{$chk1}</td><td>{$chk2}</td>";
                 }
 
@@ -131,37 +156,43 @@ class MatrixReportController extends Controller
             }
         }
 
-        // Approval rows
+        // Paraf/Approval rows
         $html .= "
                 <tr>
                     <td colspan='3' class='text-left bold' style='background-color:#cceeff;'>PARAF CLEANING(Sign)</td>";
         for ($d = 1; $d <= $daysInMonth; $d++) {
-            $html .= "<td style='background-color:#cceeff;'></td><td style='background-color:#cceeff;'></td>";
+            $html .= "<td style='background-color:#cceeff;'>&nbsp;</td><td style='background-color:#cceeff;'>&nbsp;</td>";
         }
         $html .= "</tr>
                 <tr>
                     <td colspan='3' class='text-left bold' style='background-color:#ffcccc; color:red;'>PARAF PJ UNIT (Sign)</td>";
         for ($d = 1; $d <= $daysInMonth; $d++) {
-            $html .= "<td style='background-color:#ffcccc;'></td><td style='background-color:#ffcccc;'></td>";
+            $html .= "<td style='background-color:#ffcccc;'>&nbsp;</td><td style='background-color:#ffcccc;'>&nbsp;</td>";
         }
         $html .= "</tr>
-            </tbody></table>
-            <br>
-            <table style='border:none;'>
+                <!-- Spacer before legend/signatures -->
                 <tr>
-                    <td colspan='3' style='border:none;' class='text-left'>
-                        Ket : v
+                    <td colspan='{$totalColumns}' style='border: none; height: 15px;'>&nbsp;</td>
+                </tr>
+                <!-- Legend and PJ Row -->
+                <tr>
+                    <td colspan='3' style='border: none;' class='text-left'>
+                        Ket : ✓ BERSIH<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✗ KOTOR
                     </td>
-                    <td colspan='" . (($daysInMonth * 2) - 4) . "' style='border:none;'></td>
-                    <td colspan='4' style='border:none;' class='text-center bold'>PJ {$areaName}</td>
+                    <td colspan='{$spacerColspan}' style='border: none;'>&nbsp;</td>
+                    <td colspan='5' style='border: none;' class='text-center bold'>PJ {$areaName}</td>
                 </tr>
-                <tr><td colspan='" . (3 + ($daysInMonth * 2)) . "' style='border:none; height:40px;'></td></tr>
+                <!-- Spacer for signatures -->
                 <tr>
-                    <td colspan='3' style='border:none;' class='text-left bold'>(Housekeeping RS)</td>
-                    <td colspan='" . (($daysInMonth * 2) - 4) . "' style='border:none;'></td>
-                    <td colspan='4' style='border:none;' class='text-center bold'>..............................</td>
+                    <td colspan='{$totalColumns}' style='border: none; height: 40px;'>&nbsp;</td>
                 </tr>
-            </table>
+                <!-- Signatures Row -->
+                <tr>
+                    <td colspan='3' style='border: none;' class='text-left bold'>(Housekeeping RS)</td>
+                    <td colspan='{$spacerColspan}' style='border: none;'>&nbsp;</td>
+                    <td colspan='5' style='border: none;' class='text-center bold'>..............................</td>
+                </tr>
+            </tbody></table>
         </body></html>";
 
         $filename = "Ceklist_{$areaName}_{$monthName}.xls";
