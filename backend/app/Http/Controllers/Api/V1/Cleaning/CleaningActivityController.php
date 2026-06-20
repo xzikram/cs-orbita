@@ -27,6 +27,8 @@ class CleaningActivityController extends Controller
         $query = CleaningActivity::with(['area.floor.building', 'shift', 'user', 'items.areaObject.cleaningObject', 'photos'])
             ->when($user->isCleaningService(), fn($q) => $q->where('user_id', $user->id))
             ->when($request->date, fn($q, $v) => $q->whereDate('date', $v))
+            ->when($request->start_date, fn($q, $v) => $q->where('date', '>=', $v))
+            ->when($request->end_date, fn($q, $v) => $q->where('date', '<=', $v))
             ->when($request->area_id, fn($q, $v) => $q->where('area_id', $v))
             ->when($request->shift_id, fn($q, $v) => $q->where('shift_id', $v))
             ->when($request->status, fn($q, $v) => $q->where('status', $v))

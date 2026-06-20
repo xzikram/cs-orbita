@@ -118,10 +118,34 @@ async function downloadReport(type: 'monthly' | 'audit' | 'matrix-excel') {
 
 // Daily Checklist variables & functions
 const selectedDailyDate = ref(new Date().toISOString().split('T')[0])
+const filterMode = ref<'today' | 'month' | 'range'>('today')
+const selectedDailyMonth = ref(new Date().getMonth() + 1)
+const selectedDailyYear = ref(new Date().getFullYear())
+const startDate = ref(new Date().toISOString().split('T')[0])
+const endDate = ref(new Date().toISOString().split('T')[0])
+
 const showDailyModal = ref(false)
 const dailyActivities = ref<any[]>([])
 const loadingDaily = ref(false)
 const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+function formatIndoShortDate(dateStr: string): string {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function getFormattedPeriodText(): string {
+  if (filterMode.value === 'today') {
+    const todayStr = new Date().toISOString().split('T')[0]
+    return formatIndoDate(todayStr)
+  } else if (filterMode.value === 'month') {
+    return `${monthNames[selectedDailyMonth.value]} ${selectedDailyYear.value}`
+  } else if (filterMode.value === 'range') {
+    return `${formatIndoShortDate(startDate.value)} - ${formatIndoShortDate(endDate.value)}`
+  }
+  return '-'
+}
 
 async function fetchDailyChecklist() {
   if (!areaId.value) {
@@ -130,12 +154,23 @@ async function fetchDailyChecklist() {
   }
   loadingDaily.value = true
   try {
-    const { data } = await api.get('/api/v1/activities', {
-      params: {
-        date: selectedDailyDate.value,
-        area_id: areaId.value
-      }
-    })
+    const params: any = {
+      area_id: areaId.value
+    }
+    
+    if (filterMode.value === 'today') {
+      params.date = new Date().toISOString().split('T')[0]
+    } else if (filterMode.value === 'month') {
+      const m = selectedDailyMonth.value
+      const y = selectedDailyYear.value
+      params.start_date = `${y}-${String(m).padStart(2, '0')}-01`
+      params.end_date = new Date(y, m, 0).toISOString().split('T')[0]
+    } else if (filterMode.value === 'range') {
+      params.start_date = startDate.value
+      params.end_date = endDate.value
+    }
+
+    const { data } = await api.get('/api/v1/activities', { params })
     dailyActivities.value = data.data || []
     showDailyModal.value = true
   } catch (e: any) {
@@ -153,8 +188,7 @@ function exportDailyToExcel() {
   if (dailyActivities.value.length === 0) return
   
   const areaName = getSelectedAreaName()
-  const formattedDate = selectedDailyDate.value
-  const formattedIndoDateStr = formatIndoDate(formattedDate)
+  const formattedIndoDateStr = getFormattedPeriodText()
   
   let html = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -180,7 +214,7 @@ function exportDailyToExcel() {
           <td colspan="5" class="header-meta">LOKASI : ${areaName.toUpperCase()}</td>
         </tr>
         <tr>
-          <td colspan="5" class="header-meta">TANGGAL : ${formattedIndoDateStr.toUpperCase()}</td>
+          <td colspan="5" class="header-meta">PERIODE : ${formattedIndoDateStr.toUpperCase()}</td>
         </tr>
         <tr>
           <td colspan="5" style="border:none; height:10px;"></td>
@@ -272,8 +306,11 @@ function exportDailyToExcel() {
   const url = window.URL.createObjectURL(blob)
   const link = document.createElement('a')
   const cleanAreaName = areaName.replace(/[^a-zA-Z0-9]/g, '_')
+  const filenameDate = filterMode.value === 'today' 
+    ? new Date().toISOString().split('T')[0]
+    : (filterMode.value === 'month' ? `${selectedDailyYear.value}_${selectedDailyMonth.value}` : `${startDate.value}_to_${endDate.value}`)
   link.href = url
-  link.setAttribute('download', `Ceklist_Harian_${cleanAreaName}_${formattedDate}.xls`)
+  link.setAttribute('download', `Ceklist_${cleanAreaName}_${filenameDate}.xls`)
   document.body.appendChild(link)
   link.click()
   link.remove()
@@ -472,8 +509,72 @@ function calculateDuration(start: string, end: string): number | string {
               Pratinjau visual tabel ceklist kebersihan ruangan beserta foto bukti sebelum/sesudah per hari, serta cetak langsung atau simpan sebagai dokumen PDF.
             </p>
             <div class="form-group mt-4">
-              <label class="label text-xs">Pilih Tanggal Laporan</label>
-              <input type="date" v-model="selectedDailyDate" class="input date-input-full" style="width: 100%;" />
+              <label class="label text-xs">Pilih Mode Periode</label>
+              <div class="filter-mode-tabs mb-3">
+                <button 
+                  type="button"
+                  class="tab-btn" 
+                  :class="{ active: filterMode === 'today' }"
+                  @click="filterMode = 'today'"
+                >Hari Ini</button>
+                <button 
+                  type="button"
+                  class="tab-btn" 
+                  :class="{ active: filterMode === 'month' }"
+                  @click="filterMode = 'month'"
+                >1 Bulan</button>
+                <button 
+                  type="button"
+                  class="tab-btn" 
+                  :class="{ active: filterMode === 'range' }"
+                  @click="filterMode = 'range'"
+                >Rentang Tanggal</button>
+              </div>
+
+              <!-- Today Mode -->
+              <div v-if="filterMode === 'today'" class="mode-input-container">
+                <span class="text-xs" style="color: hsl(var(--muted-foreground));">Hari ini: <b>{{ formatIndoDate(new Date().toISOString().split('T')[0]) }}</b></span>
+              </div>
+
+              <!-- Month Mode -->
+              <div v-else-if="filterMode === 'month'" class="mode-input-container inline-flex-container">
+                <div class="flex-field">
+                  <label class="label text-xs">Bulan</label>
+                  <select v-model="selectedDailyMonth" class="input select-input text-xs">
+                    <option :value="1">Januari</option>
+                    <option :value="2">Februari</option>
+                    <option :value="3">Maret</option>
+                    <option :value="4">April</option>
+                    <option :value="5">Mei</option>
+                    <option :value="6">Juni</option>
+                    <option :value="7">Juli</option>
+                    <option :value="8">Agustus</option>
+                    <option :value="9">September</option>
+                    <option :value="10">Oktober</option>
+                    <option :value="11">November</option>
+                    <option :value="12">Desember</option>
+                  </select>
+                </div>
+                <div class="flex-field" style="width: 85px; flex-shrink: 0;">
+                  <label class="label text-xs">Tahun</label>
+                  <select v-model="selectedDailyYear" class="input select-input text-xs">
+                    <option :value="new Date().getFullYear() - 1">{{ new Date().getFullYear() - 1 }}</option>
+                    <option :value="new Date().getFullYear()">{{ new Date().getFullYear() }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Range Mode -->
+              <div v-else-if="filterMode === 'range'" class="mode-input-container inline-flex-container">
+                <div class="flex-field">
+                  <label class="label text-xs">Tanggal Mulai</label>
+                  <input type="date" v-model="startDate" class="input date-input-full text-xs" style="width: 100%;" />
+                </div>
+                <div class="flex-field">
+                  <label class="label text-xs">Tanggal Selesai</label>
+                  <input type="date" v-model="endDate" class="input date-input-full text-xs" style="width: 100%;" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -555,8 +656,8 @@ function calculateDuration(start: string, end: string): number | string {
                         <td>: <b>{{ getSelectedAreaName() }}</b></td>
                       </tr>
                       <tr>
-                        <td>Hari / Tanggal</td>
-                        <td>: <b>{{ formatIndoDate(selectedDailyDate) }}</b></td>
+                        <td>Periode</td>
+                        <td>: <b>{{ getFormattedPeriodText() }}</b></td>
                       </tr>
                     </table>
                   </div>
@@ -930,6 +1031,52 @@ function calculateDuration(start: string, end: string): number | string {
     flex-direction: column;
     gap: 1rem;
   }
+}
+
+/* Filter Mode Tabs */
+.filter-mode-tabs {
+  display: flex;
+  background: hsl(var(--muted));
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  gap: 0.25rem;
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.tab-btn:hover {
+  color: hsl(var(--foreground));
+}
+
+.tab-btn.active {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.mode-input-container {
+  margin-top: 0.75rem;
+}
+
+.inline-flex-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.flex-field {
+  flex: 1;
 }
 </style>
 
