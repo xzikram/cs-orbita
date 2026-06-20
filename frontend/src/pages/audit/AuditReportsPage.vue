@@ -1225,8 +1225,12 @@ function logoutAudit() {
   margin-bottom: 0.5rem;
 }
 
-/* Print styles override */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 20mm 15mm;
+  }
+
   body * {
     visibility: hidden;
   }
@@ -1274,7 +1278,10 @@ function logoutAudit() {
     font-size: 11px !important;
   }
   #daily-print-area {
-    padding: 15px 10px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   .activity-print-photos {
     margin: 0.5rem 0 !important;

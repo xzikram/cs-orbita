@@ -1800,6 +1800,11 @@ function calculateDuration(start: string, end: string): number | string {
 
 /* ===== Printing Media Queries ===== */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 20mm 15mm;
+  }
+
   #app {
     display: none !important;
   }
@@ -1840,9 +1845,9 @@ function calculateDuration(start: string, end: string): number | string {
 
   #daily-print-area {
     width: 100% !important;
-    max-width: 800px !important;
-    margin: 0 auto !important;
-    padding: 15px 10px !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     box-sizing: border-box !important;
     background: white !important;
     color: black !important;
