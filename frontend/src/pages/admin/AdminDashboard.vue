@@ -187,6 +187,103 @@ const quickLinks = computed(() => {
 .spinner-large { width: 3rem; height: 3rem; border: 4px solid rgba(255,255,255,0.1); border-top-color: hsl(var(--primary)); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-@media (max-width: 1024px) { .stats-grid, .links-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 640px) { .stats-grid, .links-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1024px) {
+  .stats-grid, .links-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-dashboard {
+    padding: 0;
+  }
+  
+  .admin-dashboard .mb-6 {
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .text-2xl {
+    font-size: 1.125rem !important;
+  }
+  
+  .text-muted-foreground {
+    font-size: 0.7rem !important;
+  }
+  
+  .btn-secondary {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .card-stat {
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 0.5rem !important;
+  }
+  
+  .stat-title {
+    font-size: 0.625rem !important;
+  }
+  
+  .stat-icon {
+    font-size: 0.875rem !important;
+  }
+  
+  .stat-value {
+    font-size: 1.25rem !important;
+    margin-bottom: 0px !important;
+  }
+  
+  .stat-desc {
+    display: none !important;
+  }
+
+  .progress-bg {
+    height: 0.375rem !important;
+    margin-top: 0.375rem !important;
+  }
+  
+  .quick-links {
+    margin-top: 0.5rem;
+  }
+  
+  .quick-links h2 {
+    font-size: 0.875rem;
+    margin-bottom: 0.375rem !important;
+  }
+
+  .links-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.375rem !important;
+  }
+  
+  .link-card {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.375rem !important;
+    padding: 0.5rem 0.625rem !important;
+    border-radius: 0.5rem !important;
+  }
+  
+  .link-card span {
+    font-size: 0.75rem !important;
+  }
+  
+  .link-icon {
+    font-size: 1.125rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Override to maintain the compact 2-column mobile layout */
+  .stats-grid, .links-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
 </style>
