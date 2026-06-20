@@ -15,6 +15,10 @@ const navItems = [
   { name: 'mobile-history', label: 'Riwayat', icon: '📜' },
   { name: 'mobile-profile', label: 'Profil', icon: '👤' },
 ]
+
+function handleRefresh() {
+  window.location.reload()
+}
 </script>
 
 <template>
@@ -23,7 +27,10 @@ const navItems = [
     <header class="mobile-header">
       <div class="mobile-header-content">
         <img src="/Logo%20RS%20JEC%20ORBITA.png" alt="Logo RS JEC Orbita" class="mobile-logo-img" />
-        <span class="mobile-user">{{ authStore.user?.name }}</span>
+        <div class="mobile-header-actions">
+          <span class="mobile-user">{{ authStore.user?.name }}</span>
+          <button class="mobile-refresh-btn" @click="handleRefresh" title="Refresh">🔄</button>
+        </div>
       </div>
     </header>
 
@@ -145,5 +152,32 @@ const navItems = [
 
 .mobile-bottom-nav a:hover {
   background: hsl(var(--muted));
+}
+
+.mobile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mobile-refresh-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.mobile-refresh-btn:hover {
+  background: hsl(var(--muted));
+}
+
+.mobile-refresh-btn:active {
+  transform: scale(0.9) rotate(30deg);
 }
 </style>
