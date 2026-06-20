@@ -79,12 +79,16 @@ class AuditAccessController extends Controller
             ->orderBy('start_time', 'asc')
             ->get();
 
+        $area = Area::find($request->area_id);
+        $areaName = $area ? $area->name : 'Unknown';
+
         // Log the activity preview
         \App\Models\AuditAccessLog::create([
             'audit_session_id' => $session->id,
             'report_type' => 'Pratinjau Ceklist Harian',
             'details' => [
                 'area_id' => $request->area_id,
+                'area_name' => $areaName,
                 'date' => $request->date,
                 'start_date' => $request->start_date,
                 'end_date' => $request->end_date,
