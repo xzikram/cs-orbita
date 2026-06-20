@@ -452,12 +452,7 @@ function calculateDuration(start: string, end: string): number | string {
           </div>
         </div>
       </div>
-      
-      <div class="period-indicator" v-if="month && year">
-        <span class="period-indicator-glow"></span>
-        <span class="period-indicator-icon">📋</span>
-        <span>Periode aktif saat ini: <b>{{ getPeriodLabel() }}</b></span>
-      </div>
+
     </div>
 
     <!-- Export Grid Layout (Premium Cards) -->
@@ -929,34 +924,6 @@ function calculateDuration(start: string, end: string): number | string {
   font-weight: 500;
 }
 
-.period-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 1.25rem;
-  padding: 0.625rem 1rem;
-  background: hsl(var(--primary) / 0.08);
-  border: 1px solid hsl(var(--primary) / 0.2);
-  border-radius: 0.625rem;
-  font-size: 0.8125rem;
-  color: hsl(var(--muted-foreground));
-  position: relative;
-  overflow: hidden;
-}
-
-.period-indicator-glow {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 3px;
-  background: hsl(var(--primary));
-  box-shadow: 0 0 8px hsl(var(--primary));
-}
-
-.period-indicator-icon {
-  font-size: 0.95rem;
-}
 
 /* ===== Export Grid ===== */
 .export-grid {
