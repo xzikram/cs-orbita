@@ -701,7 +701,7 @@ function logoutAudit() {
                         <td class="text-left">{{ item.area_object?.cleaning_object?.name || '-' }}</td>
                         <td class="text-center">
                           <span :class="item.is_checked ? 'status-clean' : 'status-dirty'">
-                            {{ item.is_checked ? '✓ Bersih' : '✗ Kotor' }}
+                            {{ item.is_checked ? '✓' : '✗' }}
                           </span>
                         </td>
                         <td class="text-center">{{ item.checked_at ? formatTimeOnly(item.checked_at) : '-' }}</td>

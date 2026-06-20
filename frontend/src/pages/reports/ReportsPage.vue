@@ -677,7 +677,7 @@ function calculateDuration(start: string, end: string): number | string {
                           <td class="text-left text-muted-fg">{{ item.area_object?.cleaning_object?.name || '-' }}</td>
                           <td class="text-center">
                             <span :class="item.is_checked ? 'status-clean-badge' : 'status-dirty-badge'">
-                              {{ item.is_checked ? '✓ Bersih' : '✗ Kotor' }}
+                              {{ item.is_checked ? '✓' : '✗' }}
                             </span>
                           </td>
                           <td class="text-center font-mono text-xs">{{ item.checked_at ? formatTimeOnly(item.checked_at) : '-' }}</td>
