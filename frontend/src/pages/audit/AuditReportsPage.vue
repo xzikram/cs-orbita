@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../lib/axios'
+import { echo } from '../../lib/echo'
 
 const route = useRoute()
 const router = useRouter()
@@ -44,6 +45,8 @@ function getPeriodLabel() {
   return `${monthNames[month.value] || ''} ${year.value}`
 }
 
+const checkInterval = ref<any>(null)
+
 onMounted(async () => {
   // Validate token matches route param
   if (!sessionToken || sessionToken !== sessionUuid) {
@@ -67,12 +70,56 @@ onMounted(async () => {
 
     // Fetch areas using public endpoint
     await fetchAreas()
+
+    // Start listening for session changes (revocation/expiration)
+    startSessionListener(sessionUuid)
   } catch (err: any) {
     sessionError.value = err.response?.data?.message || 'Gagal memverifikasi status sesi audit.'
   } finally {
     isValidating.value = false
   }
 })
+
+onUnmounted(() => {
+  stopPolling()
+  if (sessionUuid) {
+    echo.leave(`audit-session.${sessionUuid}`)
+  }
+})
+
+function startSessionListener(uuid: string) {
+  // 1. WebSocket (Echo)
+  echo.channel(`audit-session.${uuid}`)
+    .listen('.App\\Events\\AuditSessionApproved', (e: any) => {
+      if (e.status !== 'approved') {
+        sessionError.value = 'Sesi Anda telah diputus oleh administrator.'
+        stopPolling()
+      }
+    })
+
+  // 2. Polling Fallback (every 10 seconds)
+  checkInterval.value = setInterval(async () => {
+    try {
+      const res = await api.get(`/api/v1/public/audit-session/${uuid}`)
+      if (res.data.status !== 'approved') {
+        sessionError.value = 'Sesi Anda telah berakhir atau diputus oleh administrator.'
+        stopPolling()
+      }
+    } catch (err: any) {
+      if (err.response?.status === 404 || err.response?.status === 403) {
+        sessionError.value = 'Sesi Anda telah berakhir atau diputus oleh administrator.'
+        stopPolling()
+      }
+    }
+  }, 10000)
+}
+
+function stopPolling() {
+  if (checkInterval.value) {
+    clearInterval(checkInterval.value)
+    checkInterval.value = null
+  }
+}
 
 async function fetchAreas() {
   try {
@@ -376,9 +423,14 @@ function calculateDuration(start: string, end: string): number | string {
 }
 
 function logoutAudit() {
+  const linkUuid = localStorage.getItem('audit_link_uuid')
   localStorage.removeItem('audit_session_token')
   localStorage.removeItem('audit_session_uuid')
-  router.push('/')
+  if (linkUuid) {
+    router.push({ name: 'audit-gateway', params: { linkUuid } })
+  } else {
+    router.push('/')
+  }
 }
 </script>
 

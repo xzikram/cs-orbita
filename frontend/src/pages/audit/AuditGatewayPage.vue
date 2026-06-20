@@ -26,6 +26,7 @@ onMounted(async () => {
     if (!res.data.valid) {
       linkError.value = res.data.message || 'Tautan ini tidak valid atau kedaluwarsa.'
     } else {
+      localStorage.setItem('audit_link_uuid', linkUuid)
       // If we already have a session, check its status
       if (sessionUuid.value) {
         await checkExistingSession()

@@ -602,6 +602,23 @@ class AuditAccessController extends Controller
     }
 
     /**
+     * Get all active (approved & unexpired) sessions
+     */
+    public function getActiveSessions()
+    {
+        $sessions = AuditSession::with('auditLink')
+            ->where('status', 'approved')
+            ->where(function($query) {
+                $query->whereNull('expires_at')
+                      ->orWhere('expires_at', '>', now());
+            })
+            ->orderBy('approved_at', 'desc')
+            ->get();
+
+        return response()->json(['data' => $sessions]);
+    }
+
+    /**
      * Approve or reject an access request session
      */
     public function approveSession(Request $request, $id)
@@ -628,6 +645,25 @@ class AuditAccessController extends Controller
 
         return response()->json([
             'message' => 'Permintaan sesi berhasil ' . ($status === 'approved' ? 'disetujui.' : 'ditolak.'),
+            'session' => $session
+        ]);
+    }
+
+    /**
+     * Revoke / disconnect an approved auditor session
+     */
+    public function revokeSession($id)
+    {
+        $session = AuditSession::findOrFail($id);
+        $session->status = 'rejected'; // or 'revoked'
+        $session->expires_at = now();
+        $session->save();
+
+        // Broadcast to guest listener channel
+        broadcast(new \App\Events\AuditSessionApproved($session))->toOthers();
+
+        return response()->json([
+            'message' => 'Sesi berhasil diputuskan / diputus.',
             'session' => $session
         ]);
     }

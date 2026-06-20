@@ -8,6 +8,7 @@ const activeTab = ref<'links' | 'approvals' | 'logs'>('links')
 // State
 const links = ref<any[]>([])
 const pendingSessions = ref<any[]>([])
+const activeSessions = ref<any[]>([])
 const logs = ref<any[]>([])
 const areasList = ref<any[]>([])
 
@@ -21,6 +22,7 @@ const newExpiresAt = ref('')
 const isGenerating = ref(false)
 const isLoadingLinks = ref(false)
 const isLoadingApprovals = ref(false)
+const isLoadingActiveSessions = ref(false)
 const isLoadingLogs = ref(false)
 
 // QR code viewer modal
@@ -83,6 +85,18 @@ async function fetchAreasList() {
   }
 }
 
+async function fetchActiveSessions() {
+  isLoadingActiveSessions.value = true
+  try {
+    const res = await api.get('/api/v1/admin/audit-sessions/active')
+    activeSessions.value = res.data.data
+  } catch (err: any) {
+    showToast('Gagal memuat sesi aktif.', 'error')
+  } finally {
+    isLoadingActiveSessions.value = false
+  }
+}
+
 // Generate New Link
 async function generateLink() {
   isGenerating.value = true
@@ -121,13 +135,28 @@ async function approveSession(session: any, status: 'approved' | 'rejected') {
     
     showToast(`Permintaan akses ${session.name} berhasil ${status === 'approved' ? 'disetujui' : 'ditolak'}!`)
     
-    // Refresh links count & logs if approved
+    // Refresh links count, active sessions, and logs
+    fetchActiveSessions()
     if (status === 'approved') {
       fetchLinks()
       fetchLogs()
     }
   } catch (err: any) {
     showToast('Gagal memproses persetujuan.', 'error')
+  }
+}
+
+async function revokeSession(session: any) {
+  if (!confirm(`Apakah Anda yakin ingin memutuskan sesi untuk ${session.name} (${session.unit})?`)) {
+    return
+  }
+  try {
+    await api.put(`/api/v1/admin/audit-sessions/${session.id}/revoke`)
+    showToast(`Sesi ${session.name} berhasil diputuskan!`)
+    fetchActiveSessions()
+    fetchLogs()
+  } catch (err: any) {
+    showToast('Gagal memutuskan sesi.', 'error')
   }
 }
 
@@ -166,50 +195,52 @@ function formatIndoDateTime(dateTimeStr: string) {
   })
 }
 
-function formatDetails(details: any) {
+function getAreaName(details: any) {
   if (!details) return '-'
   if (typeof details === 'string') {
     try {
       details = JSON.parse(details)
     } catch {
-      return details
+      return '-'
     }
   }
   
-  const parts = []
-  
-  // Show area name directly
-  let areaName = details.area_name
-  if (!areaName && details.area_id) {
+  if (details.area_name) return details.area_name
+  if (details.area_id) {
     const area = areasList.value.find(a => a.id == details.area_id)
-    if (area) {
-      areaName = area.name
-    } else {
-      areaName = `Area #${details.area_id}`
+    return area ? area.name : `Area #${details.area_id}`
+  }
+  return '-'
+}
+
+function formatDateFilter(details: any) {
+  if (!details) return '-'
+  if (typeof details === 'string') {
+    try {
+      details = JSON.parse(details)
+    } catch {
+      return '-'
     }
   }
   
-  if (areaName) {
-    parts.push(`Area: ${areaName}`)
-  }
-  
-  // Show date / period details
   if (details.month && details.year) {
     const mName = monthNames[details.month] || details.month
-    parts.push(`Periode: ${mName} ${details.year}`)
-  } else if (details.date) {
-    parts.push(`Tanggal: ${details.date}`)
-  } else if (details.start_date && details.end_date) {
-    parts.push(`Rentang: ${details.start_date} s/d ${details.end_date}`)
+    return `Periode: ${mName} ${details.year}`
   }
-  
-  return parts.length > 0 ? parts.join(' | ') : JSON.stringify(details)
+  if (details.date) {
+    return `Tanggal: ${details.date}`
+  }
+  if (details.start_date && details.end_date) {
+    return `Rentang: ${details.start_date} s/d ${details.end_date}`
+  }
+  return '-'
 }
 
 // Real-time events
 onMounted(() => {
   fetchLinks()
   fetchPendingSessions()
+  fetchActiveSessions()
   fetchLogs()
   fetchAreasList()
 
@@ -411,6 +442,52 @@ onUnmounted(() => {
           </table>
         </div>
       </div>
+
+      <!-- Active Auditor Sessions Card -->
+      <div class="card mt-6">
+        <h3 class="card-heading mb-4">Sesi Auditor Yang Sedang Aktif</h3>
+        
+        <div v-if="isLoadingActiveSessions" class="loading-state">
+          <div class="spinner"></div>
+          <p>Memuat sesi aktif...</p>
+        </div>
+        
+        <div v-else-if="activeSessions.length === 0" class="empty-state">
+          <span class="empty-icon">👥</span>
+          <p>Tidak ada sesi auditor yang sedang aktif saat ini.</p>
+        </div>
+        
+        <div v-else class="table-responsive">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>Nama Auditor</th>
+                <th>Unit / SPI</th>
+                <th>Waktu Disetujui</th>
+                <th>Berlaku Sampai</th>
+                <th width="150">Tindakan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="session in activeSessions" :key="session.id">
+                <td class="font-semibold">{{ session.name }}</td>
+                <td>{{ session.unit }}</td>
+                <td>{{ formatIndoDateTime(session.approved_at) }}</td>
+                <td>
+                  <span class="text-success font-medium">
+                    {{ session.expires_at ? formatIndoDateTime(session.expires_at) : 'Akhir Hari Ini' }}
+                  </span>
+                </td>
+                <td>
+                  <button class="btn btn-destructive btn-sm btn-block" @click="revokeSession(session)">
+                    Putuskan Sesi
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- TAB: LOG AKTIVITAS -->
@@ -433,22 +510,27 @@ onUnmounted(() => {
             <thead>
               <tr>
                 <th>Waktu Akses</th>
-                <th>Auditor</th>
-                <th>Unit / SPI</th>
+                <th>Auditor (Unit)</th>
+                <th>Area</th>
                 <th>Laporan Yang Dibuka</th>
-                <th>Detail Parameter / Filter</th>
+                <th>Filter Parameter</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="log in logs" :key="log.id">
                 <td>{{ formatIndoDateTime(log.accessed_at) }}</td>
-                <td class="font-semibold">{{ log.audit_session?.name || 'Tamu' }}</td>
-                <td>{{ log.audit_session?.unit || '-' }}</td>
+                <td class="font-semibold">
+                  {{ log.audit_session?.name || 'Tamu' }}
+                  <span class="text-xs text-muted-fg block">Unit: {{ log.audit_session?.unit || '-' }}</span>
+                </td>
+                <td class="font-semibold text-primary">
+                  {{ getAreaName(log.details) }}
+                </td>
                 <td>
                   <span class="badge badge-primary">{{ log.report_type }}</span>
                 </td>
                 <td class="text-muted-fg font-medium">
-                  {{ formatDetails(log.details) }}
+                  {{ formatDateFilter(log.details) }}
                 </td>
               </tr>
             </tbody>

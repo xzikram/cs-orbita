@@ -123,7 +123,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/admin/audit-links', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'generateLink']);
             Route::put('/admin/audit-links/{id}/toggle', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'toggleLink']);
             Route::get('/admin/audit-sessions/pending', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'getPendingSessions']);
+            Route::get('/admin/audit-sessions/active', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'getActiveSessions']);
             Route::put('/admin/audit-sessions/{id}/approve', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'approveSession']);
+            Route::put('/admin/audit-sessions/{id}/revoke', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'revokeSession']);
             Route::get('/admin/audit-logs', [\App\Http\Controllers\Api\V1\Admin\AuditAccessController::class, 'getAccessLogs']);
 
             // Master data write
