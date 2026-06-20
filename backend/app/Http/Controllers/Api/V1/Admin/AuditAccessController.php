@@ -426,75 +426,72 @@ class AuditAccessController extends Controller
         $logoUrl = asset('Logo RS JEC ORBITA.png');
         $totalColumns = 3 + ($daysInMonth * 2);
         $titleColspan = $totalColumns - 2;
-        $metaColspan = $totalColumns - 3;
-        $spacerColspan = ($daysInMonth * 2) - 5;
+        $spacerColspan = max(1, ($daysInMonth * 2) - 5);
+
+        // Common inline styles (Excel ignores <style> tags and CSS classes)
+        $bdr  = "border: 1px solid #000;";
+        $nb   = "border: none;";
+        $fs   = "font-family: Arial; font-size: 10pt;";
+        $ctr  = "text-align: center; vertical-align: middle;";
+        $lft  = "text-align: left; vertical-align: middle;";
+        $bld  = "font-weight: bold;";
 
         $html = "
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-            <meta charset='utf-8'>
-            <style>
-                table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 10pt; }
-                th, td { border: 1px solid black; padding: 3px; text-align: center; }
-                .text-left { text-align: left; }
-                .text-center { text-align: center; }
-                .bold { font-weight: bold; }
-                .header-title { font-size: 13pt; font-weight: bold; text-align: center; }
-                .subtitle { font-size: 11pt; font-weight: bold; color: red; text-align: center; }
-            </style>
-        </head>
+        <head><meta charset='utf-8'></head>
         <body>
-            <table border='1'>
-                <thead>
-                    <!-- Logo and Title Row -->
-                    <tr>
-                        <td rowspan='3' colspan='2' style='background-color: white; border: 1px solid black; text-align: center; vertical-align: middle;'>
-                            <img src='{$logoUrl}' height='50' width='120' alt='JEC Logo'>
-                        </td>
-                        <td colspan='{$titleColspan}' class='header-title' style='height: 25px; vertical-align: middle;'>
-                            CEKLIST KEBERSIHAN CLEANING SERVICE RS JEC ORBITA MAKASSAR
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan='{$titleColspan}' class='subtitle' style='height: 20px; vertical-align: middle;'>
-                            {$areaName}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan='{$titleColspan}' style='height: 15px;'>&nbsp;</td>
-                    </tr>
-                    <!-- Meta info Row 4 & 5 -->
-                    <tr>
-                        <td colspan='3' style='border: none; border-bottom: 1px solid black;' class='text-left bold'>LOKASI : {$areaName}</td>
-                        <td colspan='{$metaColspan}' style='border: none; border-bottom: 1px solid black;'>&nbsp;</td>
-                    </tr>
-                    <tr>
-                        <td colspan='3' style='border: none; border-bottom: 1px solid black;' class='text-left bold'>PERIODE : {$monthName}</td>
-                        <td colspan='{$metaColspan}' style='border: none; border-bottom: 1px solid black;'>&nbsp;</td>
-                    </tr>
-                    <!-- Spacer Row -->
-                    <tr>
-                        <td colspan='{$totalColumns}' style='border: none; height: 10px;'>&nbsp;</td>
-                    </tr>
-                    <!-- Main headers -->
-                    <tr>
-                        <th rowspan='3' width='30'>NO</th>
-                        <th rowspan='3' width='150'>Area</th>
-                        <th rowspan='3' width='150'>Area Dibersihkan</th>
-                        <th colspan='" . ($daysInMonth * 2) . "'>TANGGAL</th>
-                    </tr>
-                    <tr>";
-        
-        for ($d = 1; $d <= $daysInMonth; $d++) {
-            $html .= "<th colspan='2'>{$d}</th>";
-        }
-        $html .= "</tr>
-                    <tr>";
-        for ($d = 1; $d <= $daysInMonth; $d++) {
-            $html .= "<th>1</th><th>2</th>";
-        }
-        $html .= "</tr></thead><tbody>";
+            <!-- ======== HEADER TABLE (no borders) ======== -->
+            <table style='{$fs} border-collapse: collapse;'>
+                <tr>
+                    <td rowspan='4' style='{$nb} {$ctr} padding: 5px;' width='120'>
+                        <img src='{$logoUrl}' height='55' alt='JEC'>
+                    </td>
+                    <td colspan='{$titleColspan}' style='{$nb} {$ctr} {$bld} font-size: 13pt;'>
+                        CEKLIST KEBERSIHAN CLEANING SERVICE RS JEC ORBITA MAKASSAR
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan='{$titleColspan}' style='{$nb} {$ctr} {$bld} font-size: 11pt; color: red;'>
+                        {$areaName}
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan='{$titleColspan}' style='{$nb} height: 5px;'>&nbsp;</td>
+                </tr>
+                <tr>
+                    <td colspan='{$titleColspan}' style='{$nb} height: 5px;'>&nbsp;</td>
+                </tr>
+                <tr>
+                    <td colspan='2' style='{$nb} {$lft} {$bld} {$fs} border-bottom: 1px solid #000;'>LOKASI : {$areaName}</td>
+                </tr>
+                <tr>
+                    <td colspan='2' style='{$nb} {$lft} {$bld} {$fs} border-bottom: 1px solid #000;'>PERIODE : {$monthName}</td>
+                </tr>
+            </table>
+            <br>
+            <!-- ======== DATA TABLE (with borders) ======== -->
+            <table border='1' cellspacing='0' cellpadding='3' style='{$fs} border-collapse: collapse;'>
+                <tr>
+                    <th rowspan='3' style='{$bdr} {$ctr} {$bld} {$fs}' width='30'>NO</th>
+                    <th rowspan='3' style='{$bdr} {$ctr} {$bld} {$fs}' width='100'>Area</th>
+                    <th rowspan='3' style='{$bdr} {$ctr} {$bld} {$fs}' width='120'>Area Dibersihkan</th>
+                    <th colspan='" . ($daysInMonth * 2) . "' style='{$bdr} {$ctr} {$bld} {$fs}'>TANGGAL</th>
+                </tr>
+                <tr>";
 
+        // Day numbers row
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $html .= "<th colspan='2' style='{$bdr} {$ctr} {$bld} {$fs}'>{$d}</th>";
+        }
+        $html .= "</tr><tr>";
+
+        // Shift numbers row (1 | 2)
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $html .= "<th style='{$bdr} {$ctr} {$bld} {$fs}'>1</th><th style='{$bdr} {$ctr} {$bld} {$fs}'>2</th>";
+        }
+        $html .= "</tr>";
+
+        // Data rows
         $no = 1;
         foreach ($groupedObjects as $roomName => $objects) {
             $roomNameDisplay = $roomName ?: 'Umum';
@@ -504,59 +501,54 @@ class AuditAccessController extends Controller
             foreach ($objects as $obj) {
                 $html .= "<tr>";
                 if ($first) {
-                    $html .= "<td rowspan='{$rowCount}'>{$no}</td>";
-                    $html .= "<td rowspan='{$rowCount}'>{$roomNameDisplay}</td>";
+                    $html .= "<td rowspan='{$rowCount}' style='{$bdr} {$ctr} {$fs}'>{$no}</td>";
+                    $html .= "<td rowspan='{$rowCount}' style='{$bdr} {$lft} {$fs}'>{$roomNameDisplay}</td>";
                     $first = false;
                     $no++;
                 }
-                $html .= "<td class='text-left'>" . strtolower($obj->cleaningObject->name) . "</td>";
+                $html .= "<td style='{$bdr} {$lft} {$fs}'>" . strtolower($obj->cleaningObject->name) . "</td>";
 
                 for ($d = 1; $d <= $daysInMonth; $d++) {
                     $chk1 = isset($data[$d][1][$obj->id]) ? '✓' : '&nbsp;';
                     $chk2 = isset($data[$d][2][$obj->id]) ? '✓' : '&nbsp;';
-                    $html .= "<td>{$chk1}</td><td>{$chk2}</td>";
+                    $html .= "<td style='{$bdr} {$ctr} {$fs}'>{$chk1}</td><td style='{$bdr} {$ctr} {$fs}'>{$chk2}</td>";
                 }
                 $html .= "</tr>";
             }
         }
 
-        // Paraf/Approval rows
+        // PARAF CLEANING row
+        $html .= "<tr><td colspan='3' style='{$bdr} {$lft} {$bld} {$fs} background-color:#cceeff;'>PARAF CLEANING(Sign)</td>";
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $html .= "<td style='{$bdr} {$fs} background-color:#cceeff;'>&nbsp;</td><td style='{$bdr} {$fs} background-color:#cceeff;'>&nbsp;</td>";
+        }
+        $html .= "</tr>";
+
+        // PARAF PJ UNIT row
+        $html .= "<tr><td colspan='3' style='{$bdr} {$lft} {$bld} {$fs} background-color:#ffcccc; color:red;'>PARAF PJ UNIT (Sign)</td>";
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $html .= "<td style='{$bdr} {$fs} background-color:#ffcccc;'>&nbsp;</td><td style='{$bdr} {$fs} background-color:#ffcccc;'>&nbsp;</td>";
+        }
+        $html .= "</tr></table>";
+
+        // Footer table (legend & signatures, no borders)
         $html .= "
+            <br>
+            <table style='{$fs} border-collapse: collapse;'>
                 <tr>
-                    <td colspan='3' class='text-left bold' style='background-color:#cceeff;'>PARAF CLEANING(Sign)</td>";
-        for ($d = 1; $d <= $daysInMonth; $d++) {
-            $html .= "<td style='background-color:#cceeff;'>&nbsp;</td><td style='background-color:#cceeff;'>&nbsp;</td>";
-        }
-        $html .= "</tr>
-                <tr>
-                    <td colspan='3' class='text-left bold' style='background-color:#ffcccc; color:red;'>PARAF PJ UNIT (Sign)</td>";
-        for ($d = 1; $d <= $daysInMonth; $d++) {
-            $html .= "<td style='background-color:#ffcccc;'>&nbsp;</td><td style='background-color:#ffcccc;'>&nbsp;</td>";
-        }
-        $html .= "</tr>
-                <!-- Spacer before legend/signatures -->
-                <tr>
-                    <td colspan='{$totalColumns}' style='border: none; height: 15px;'>&nbsp;</td>
-                </tr>
-                <!-- Legend and PJ Row -->
-                <tr>
-                    <td colspan='3' style='border: none;' class='text-left'>
-                        Ket : ✓ BERSIH<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✗ KOTOR
+                    <td style='{$nb} {$lft} {$fs}' width='250'>
+                        Ket : ✓ BERSIH<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✗ KOTOR
                     </td>
-                    <td colspan='{$spacerColspan}' style='border: none;'>&nbsp;</td>
-                    <td colspan='5' style='border: none;' class='text-center bold'>PJ {$areaName}</td>
+                    <td style='{$nb}' width='400'>&nbsp;</td>
+                    <td style='{$nb} {$ctr} {$bld} {$fs}'>PJ {$areaName}</td>
                 </tr>
-                <!-- Spacer for signatures -->
+                <tr><td colspan='3' style='{$nb} height: 40px;'>&nbsp;</td></tr>
                 <tr>
-                    <td colspan='{$totalColumns}' style='border: none; height: 40px;'>&nbsp;</td>
+                    <td style='{$nb} {$lft} {$bld} {$fs}'>(Housekeeping RS)</td>
+                    <td style='{$nb}'>&nbsp;</td>
+                    <td style='{$nb} {$ctr} {$bld} {$fs}'>..............................</td>
                 </tr>
-                <!-- Signatures Row -->
-                <tr>
-                    <td colspan='3' style='border: none;' class='text-left bold'>(Housekeeping RS)</td>
-                    <td colspan='{$spacerColspan}' style='border: none;'>&nbsp;</td>
-                    <td colspan='5' style='border: none;' class='text-center bold'>..............................</td>
-                </tr>
-            </tbody></table>
+            </table>
         </body></html>";
 
         $filename = "Ceklist_{$areaName}_{$monthName}.xls";
