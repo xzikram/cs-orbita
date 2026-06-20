@@ -57,7 +57,7 @@ app.use(router)
 // Using debounce flag to prevent multiple rapid redirects
 let isRedirectingToLogin = false
 window.addEventListener('auth:unauthorized', () => {
-  if (!isRedirectingToLogin && router.currentRoute.value.name !== 'login') {
+  if (router.currentRoute.value.meta.requiresAuth && !isRedirectingToLogin && router.currentRoute.value.name !== 'login') {
     isRedirectingToLogin = true
     router.push({ name: 'login' }).finally(() => {
       // Reset flag after a short delay to allow future redirects
