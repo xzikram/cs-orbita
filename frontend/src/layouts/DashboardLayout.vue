@@ -581,3 +581,13 @@ async function handleLogout() {
   background: hsl(var(--muted));
 }
 </style>
+
+<style>
+@media (max-width: 768px) {
+  html, body, #app, #cleantrack-app {
+    height: 100% !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+}
+</style>
