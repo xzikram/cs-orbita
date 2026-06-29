@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../../lib/axios'
-import { savePendingActivity, getCachedArea } from '../../lib/db'
+import { savePendingActivity, getCachedArea, saveChecklistDraft, getChecklistDraft, deleteChecklistDraft } from '../../lib/db'
 import { useOnline } from '../../composables/useOnline'
 import { v4 as uuidv4 } from 'uuid'
 import { useAuthStore } from '../../stores/auth'
@@ -40,6 +40,7 @@ const startTime = ref(formatTime(new Date()))
 const notes = ref('')
 const photos = ref<Array<{ file: File; type: string; url: string }>>([])
 const maxPhotos = 100
+const hasDraft = ref(false)
 
 // Count checked items
 const checkedCount = computed(() => {
@@ -63,33 +64,61 @@ const uncheckedRequiredCount = computed(() => {
 async function loadData() {
   loading.value = true
   try {
+    const draft = await getChecklistDraft(parseInt(props.areaId))
+
     if (isOnline.value) {
       const { data } = await api.get(`/api/v1/areas/${props.areaId}/checklist`)
       area.value = data.data.area
-      checklist.value = data.data.checklist.map((group: any) => ({
-        room_name: group.room_name,
-        items: group.items.map((item: any) => ({
-          ...item,
-          is_checked: item.is_checked || false
+      
+      if (draft) {
+        hasDraft.value = true
+        checklist.value = draft.checklist
+        notes.value = draft.notes || ''
+        startTime.value = draft.startTime
+        photos.value = draft.photos.map(p => ({
+          file: p.file,
+          type: p.type,
+          url: URL.createObjectURL(p.file)
         }))
-      }))
-      if (data.data.existing_activity) {
-        notes.value = data.data.existing_activity.notes || ''
-        startTime.value = data.data.existing_activity.start_time
-        lastSavedTime.value = data.data.existing_activity.start_time
+      } else {
+        checklist.value = data.data.checklist.map((group: any) => ({
+          room_name: group.room_name,
+          items: group.items.map((item: any) => ({
+            ...item,
+            is_checked: item.is_checked || false
+          }))
+        }))
+        if (data.data.existing_activity) {
+          notes.value = data.data.existing_activity.notes || ''
+          startTime.value = data.data.existing_activity.start_time
+          lastSavedTime.value = data.data.existing_activity.start_time
+        }
       }
     } else {
       // Offline fallback
       const cached = await getCachedArea(parseInt(props.areaId))
       if (cached) {
         area.value = cached
-        checklist.value = cached.checklist.map((group: any) => ({
-          room_name: group.room_name,
-          items: group.items.map((item: any) => ({
-            ...item,
-            is_checked: false
+        
+        if (draft) {
+          hasDraft.value = true
+          checklist.value = draft.checklist
+          notes.value = draft.notes || ''
+          startTime.value = draft.startTime
+          photos.value = draft.photos.map(p => ({
+            file: p.file,
+            type: p.type,
+            url: URL.createObjectURL(p.file)
           }))
-        }))
+        } else {
+          checklist.value = cached.checklist.map((group: any) => ({
+            room_name: group.room_name,
+            items: group.items.map((item: any) => ({
+              ...item,
+              is_checked: false
+            }))
+          }))
+        }
       } else {
         alert('Data area tidak tersedia offline. Silakan online dulu.')
         router.push({ name: 'mobile-dashboard' })
@@ -105,66 +134,70 @@ async function loadData() {
 
 function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promise<File> {
   return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onload = (event) => {
-      const img = new Image()
-      img.src = event.target?.result as string
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        let width = img.width
-        let height = img.height
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.src = url
+    
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      let width = img.width
+      let height = img.height
 
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width)
-          width = maxWidth
-        }
-
-        canvas.width = width
-        canvas.height = height
-
-        const ctx = canvas.getContext('2d')
-        ctx?.drawImage(img, 0, 0, width, height)
-
-        // Draw watermark info (date, time, username)
-        if (ctx) {
-          const now = new Date()
-          const dateStr = now.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
-          const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-          const userName = authStore.user?.name || 'Petugas'
-          const watermarkText = `CleanTrack | ${dateStr} ${timeStr} | ${userName}`
-
-          // Background rectangle for readability
-          const rectHeight = Math.max(30, Math.round(height * 0.05))
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
-          ctx.fillRect(0, height - rectHeight, width, rectHeight)
-
-          // Text styling
-          const fontSize = Math.max(12, Math.round(rectHeight * 0.45))
-          ctx.fillStyle = '#ffffff'
-          ctx.font = `600 ${fontSize}px sans-serif`
-          ctx.textBaseline = 'middle'
-          ctx.textAlign = 'left'
-          
-          ctx.fillText(watermarkText, 15, height - (rectHeight / 2))
-        }
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name, {
-                type: 'image/jpeg',
-                lastModified: Date.now()
-              })
-              resolve(compressedFile)
-            } else {
-              resolve(file)
-            }
-          },
-          'image/jpeg',
-          quality
-        )
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width)
+        width = maxWidth
       }
+
+      canvas.width = width
+      canvas.height = height
+
+      const ctx = canvas.getContext('2d')
+      ctx?.drawImage(img, 0, 0, width, height)
+
+      // Draw watermark info (date, time, username)
+      if (ctx) {
+        const now = new Date()
+        const dateStr = now.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
+        const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        const userName = authStore.user?.name || 'Petugas'
+        const watermarkText = `CleanTrack | ${dateStr} ${timeStr} | ${userName}`
+
+        // Background rectangle for readability
+        const rectHeight = Math.max(30, Math.round(height * 0.05))
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
+        ctx.fillRect(0, height - rectHeight, width, rectHeight)
+
+        // Text styling
+        const fontSize = Math.max(12, Math.round(rectHeight * 0.45))
+        ctx.fillStyle = '#ffffff'
+        ctx.font = `600 ${fontSize}px sans-serif`
+        ctx.textBaseline = 'middle'
+        ctx.textAlign = 'left'
+        
+        ctx.fillText(watermarkText, 15, height - (rectHeight / 2))
+      }
+
+      canvas.toBlob(
+        (blob) => {
+          URL.revokeObjectURL(url)
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            })
+            resolve(compressedFile)
+          } else {
+            resolve(file)
+          }
+        },
+        'image/jpeg',
+        quality
+      )
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(file)
     }
   })
 }
@@ -187,12 +220,47 @@ async function handlePhotoUpload(event: Event, type: 'before' | 'after') {
     console.error('Gagal mengompresi gambar:', err)
     const url = URL.createObjectURL(originalFile)
     photos.value.push({ file: originalFile, type, url })
+  } finally {
+    input.value = ''
   }
 }
 
 function removePhoto(index: number) {
   URL.revokeObjectURL(photos.value[index].url)
   photos.value.splice(index, 1)
+}
+
+async function saveDraft() {
+  if (loading.value || submitting.value || !area.value) return
+  try {
+    const draft = {
+      areaId: parseInt(props.areaId),
+      checklist: checklist.value,
+      notes: notes.value,
+      photos: photos.value.map(p => ({ file: p.file, type: p.type })),
+      startTime: startTime.value,
+      lastUpdated: new Date().toISOString()
+    }
+    await saveChecklistDraft(draft)
+  } catch (err) {
+    console.error('Gagal menyimpan draf:', err)
+  }
+}
+
+watch([checklist, notes, photos], () => {
+  saveDraft()
+}, { deep: true })
+
+async function confirmDiscardDraft() {
+  if (confirm('Apakah Anda yakin ingin menghapus draf ini dan mengulang dari awal? Semua checklist dan foto yang baru diambil akan dihapus.')) {
+    photos.value.forEach(p => URL.revokeObjectURL(p.url))
+    photos.value = []
+    notes.value = ''
+    startTime.value = formatTime(new Date())
+    hasDraft.value = false
+    await deleteChecklistDraft(parseInt(props.areaId))
+    await loadData()
+  }
 }
 
 async function submitActivity() {
@@ -249,7 +317,8 @@ async function submitActivity() {
       })
     }
 
-    // Success -> redirect
+    // Success -> delete draft and redirect
+    await deleteChecklistDraft(parseInt(props.areaId))
     router.push({ name: 'mobile-dashboard' })
   } catch (e) {
     console.error(e)
@@ -266,6 +335,17 @@ onMounted(() => {
 
 <template>
   <div class="checklist-page" v-if="!loading">
+    <!-- Draft Banner -->
+    <div v-if="hasDraft" class="card draft-banner-card mb-4 animate-slide-up">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 text-xs font-medium text-warning">
+          <span class="draft-banner-icon">📂</span>
+          <span>Melanjutkan draf pekerjaan (Mulai: {{ startTime }})</span>
+        </div>
+        <button class="btn-discard-draft" @click="confirmDiscardDraft">Hapus Draf</button>
+      </div>
+    </div>
+
     <div class="area-header animate-slide-up">
       <div class="area-code">{{ area.code }}</div>
       <h2 class="text-xl font-bold">{{ area.name }}</h2>
@@ -374,6 +454,34 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.draft-banner-card {
+  background: hsl(var(--warning) / 0.05);
+  border: 1px dashed hsl(var(--warning) / 0.3);
+  padding: 0.75rem 1rem;
+}
+
+.draft-banner-icon {
+  font-size: 1rem;
+}
+
+.btn-discard-draft {
+  background: hsl(var(--destructive) / 0.15);
+  color: hsl(var(--destructive));
+  border: 1px solid hsl(var(--destructive) / 0.3);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-discard-draft:hover {
+  background: hsl(var(--destructive));
+  color: white;
+  border-color: hsl(var(--destructive));
+}
+
 .area-header {
   background: linear-gradient(135deg, hsl(222, 47%, 12%), hsl(222, 47%, 8%));
   padding: 1.5rem;

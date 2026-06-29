@@ -1,7 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb'
 
 const DB_NAME = 'cleantrack'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 export interface PendingActivity {
   uuid: string
@@ -59,6 +59,11 @@ async function getDB(): Promise<IDBPDatabase> {
       // User profile cache
       if (!db.objectStoreNames.contains('userProfile')) {
         db.createObjectStore('userProfile', { keyPath: 'id' })
+      }
+
+      // Checklist drafts
+      if (!db.objectStoreNames.contains('checklistDrafts')) {
+        db.createObjectStore('checklistDrafts', { keyPath: 'areaId' })
       }
     },
   })
@@ -128,4 +133,29 @@ export async function clearOfflineCache(): Promise<void> {
   const db = await getDB()
   await db.clear('userProfile')
   await db.clear('cachedAreas')
+}
+
+// ===== Checklist Drafts =====
+export interface ChecklistDraft {
+  areaId: number
+  checklist: any[]
+  notes: string
+  photos: Array<{ file: File; type: string }>
+  startTime: string
+  lastUpdated: string
+}
+
+export async function saveChecklistDraft(draft: ChecklistDraft): Promise<void> {
+  const db = await getDB()
+  await db.put('checklistDrafts', draft)
+}
+
+export async function getChecklistDraft(areaId: number): Promise<ChecklistDraft | undefined> {
+  const db = await getDB()
+  return db.get('checklistDrafts', areaId)
+}
+
+export async function deleteChecklistDraft(areaId: number): Promise<void> {
+  const db = await getDB()
+  await db.delete('checklistDrafts', areaId)
 }
